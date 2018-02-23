@@ -1,0 +1,37 @@
+{
+  "id": "196",
+  "exercise": "Operation: Operation",
+  "course": "Operation: Operation",
+  "result_id": "164",
+  "trainer_id": null,
+  "session_data": null,
+  "start_time": null,
+  "elapsed_time": null,
+  "success": "0",
+  "closed": "0",
+  "kurento_url": "wss://video.xlms.org:8433/kurento",
+  "kurento_video_directory": "/var/kurento/xlms/demo/",
+  "name": null,
+  "interface": "https://demo.xlms.org/sites/demo.xlms.org/files/devices/operation_7/assets/index.html",
+  "hardware": [
+    {
+      "vendorID": 1003,
+      "deviceID": 8256
+    }
+  ],
+  "metrics": {
+    "elapsed_time": {
+      "maximum": "24",
+      "minimum": "8"
+    },
+    "error_count": {
+      "maximum": "6"
+    },
+    "error_length": {
+      "maximum": "500"
+    }
+  },
+  "configuration": [
+    "0"
+  ]
+}
