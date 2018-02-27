@@ -29,10 +29,10 @@ export function exit() {
 
 declare global {
     interface Window {
-        exit: () => void;
+        devel: { [name: string]: any };
     }
 }
 if ( DEVEL ) {
-    window.exit = exit;
+    window.devel = { exit };
 }
 

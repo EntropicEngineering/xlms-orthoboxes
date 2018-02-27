@@ -73,20 +73,7 @@ export async function get_session_data(URL: string) {
     let REST_data = await retrieve() as REST_Data;
     DEBUG(REST_data);
 
-    return {
-        // user_display_name:      REST_data.name,
-        id:                     REST_data.id,
-        exercise_name:          REST_data.exercise,
-        course_name:            REST_data.course,
-        video_configuration: {
-            url:                REST_data.kurento_url,
-            video_directory:    REST_data.kurento_video_directory
-        },
-        plugin_URL:             REST_data.interface,
-        allowed_devices:        REST_data.hardware,
-        metrics:                REST_data.metrics,
-        configuration:          REST_data.configuration
-    };
+    return REST_data;
 }
 
 export interface Results {

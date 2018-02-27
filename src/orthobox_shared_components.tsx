@@ -1,14 +1,14 @@
 /**
  */
 
-import { DEBUG, DEVEL, ERROR, noop } from './utils';
+import { DEBUG, DEVEL, ERROR, noop, exit } from './utils';
 
-import { View_Port, Viewport } from './UI_utils';
+import { User_Input, View_Port, Viewport } from './UI_utils';
 import {
     session_data_promise,
     register_USB_message_handlers,
-    exit,
     user_input,
+    user_input_state,
     Window_Closed_Error,
     send_results
 } from './XLMS';
@@ -23,14 +23,14 @@ import { kurentoClient } from "kurento-client";
 // import 'webrtc-adapter';
 // let kurento_client = kurentoClient.KurentoClient;
 if ( DEVEL ) {
-    window.kurento_utils = kurento_utils;
-    window.kurento_client = kurentoClient;
+    window.devel.kurento_utils = kurento_utils;
+    window.devel.kurento_client = kurentoClient;
 }
 
 
-export let HID_message_handlers = {};
+export let HID_message_handlers: { [name: string]: (...args: any[]) => void } = {};
 if ( DEVEL ) {
-    window.HID_message_handlers = HID_message_handlers;
+    window.devel.HID_message_handlers = HID_message_handlers;
 }
 
 export enum ORTHOBOX_STATE {
@@ -102,13 +102,14 @@ export class Orthobox {
 
     start_exercise() {
         if ( !this.recording ) {
-            return user_input('Error: Exercise will not begin unless video is recording.', { OK: noop });
+            user_input('Error: Exercise will not begin unless video is recording.', { OK: noop });
+        } else {
+            this.start_time = Date.now();
+            this.state = ORTHOBOX_STATE.Exercise;
+            this.timer_interval = window.setInterval(() => {
+                this.timer += 1;
+            }, 1000);
         }
-        this.start_time = Date.now();
-        this.state = ORTHOBOX_STATE.Exercise;
-        this.timer_interval = window.setInterval(() => {
-            this.timer += 1;
-        }, 1000);
     }
 
     @computed get results() {
@@ -136,7 +137,7 @@ export class Orthobox {
 
 export let orthobox = new Orthobox();
 if ( DEVEL ) {
-    window.orthobox = orthobox;
+    window.devel.orthobox = orthobox;
 }
 
 
@@ -171,7 +172,7 @@ HID_message_handlers.status = action(save_raw_event(async (timestamp, serial_num
     // If tool soldered incorrectly.
     if ( byte1 & 1 ) {  // bit-wise and
         try {
-            await user_input('Device Manufactured Incorrectly', { Quit: exit });
+            user_input('Device Manufactured Incorrectly', { Quit: exit });
         } catch ( error ) {
             if ( error instanceof Window_Closed_Error ) {
                 exit();
@@ -184,7 +185,7 @@ HID_message_handlers.status = action(save_raw_event(async (timestamp, serial_num
 
     while ( orthobox.tool_state === TOOL_STATE.Unplugged ) {
         try {
-            await user_input('Tool Not Connected', { Retry: noop, Quit: exit });
+            user_input('Tool Not Connected', { Retry: noop, Quit: exit });
         } catch ( error ) {
             if ( error instanceof Window_Closed_Error ) {
                 exit();
@@ -243,14 +244,14 @@ HID_message_handlers.poke = action(save_raw_event((timestamp, location) => {
     }
 }, 'poke'));
 
-export class Orthobox_Component extends View_Port {
+export class Orthobox_Component<P, S> extends View_Port<P, S> {
     componentDidMount() {
         register_USB_message_handlers(HID_message_handlers);
     }
 }
 
 @observer
-export class Status_Bar extends React.Component {
+export class Status_Bar extends React.Component<{orthobox: Orthobox}, {}> {
     render() {
         let orthobox = this.props.orthobox;
         let timer = null;
@@ -269,27 +270,30 @@ export class Status_Bar extends React.Component {
                 break;
         }
         return (
-            <div id="status_bar" className="flex-grow flex-container row">
-                {/*<h2 id="student_name"> {orthobox.session_data.user_display_name} </h2>*/}
-                {/*<div className="flex-item">*/}
-                {/*<h2 id="student_name"> user_display_name </h2>*/}
-                {/*</div>*/}
-                <div className="flex-grow flex-container column">
-                    <div className="flex-grow">
-                        <h3 id="course_name"> {orthobox.session_data.course_name} </h3>
-                        {/*<h3 id="course_name"> course_name </h3>*/}
+            <div id="user_input_modal">
+                <div id="status_bar" className="flex-grow flex-container row">
+                    {/*<h2 id="student_name"> {orthobox.session_data.user_display_name} </h2>*/}
+                    {/*<div className="flex-item">*/}
+                    {/*<h2 id="student_name"> user_display_name </h2>*/}
+                    {/*</div>*/}
+                    <div className="flex-grow flex-container column">
+                        <div className="flex-grow">
+                            <h3 id="course_name"> {orthobox.session_data.course_name} </h3>
+                            {/*<h3 id="course_name"> course_name </h3>*/}
+                        </div>
+                        <div className="flex-grow">
+                            <h3 id="exercise_name"> {orthobox.session_data.exercise_name} </h3>
+                            {/*<h3 id="exercise_name"> exercise_name </h3>*/}
+                        </div>
                     </div>
                     <div className="flex-grow">
-                        <h3 id="exercise_name"> {orthobox.session_data.exercise_name} </h3>
-                        {/*<h3 id="exercise_name"> exercise_name </h3>*/}
+                        <h2 id="timer"> {timer} </h2>
+                    </div>
+                    <div className="flex-grow">
+                        <h3 id="error_count"> {error_count} </h3>
                     </div>
                 </div>
-                <div className="flex-grow">
-                    <h2 id="timer"> {timer} </h2>
-                </div>
-                <div className="flex-grow">
-                    <h3 id="error_count"> {error_count} </h3>
-                </div>
+                <User_Input input={user_input_state}/>
             </div>
         );
     }
@@ -320,7 +324,7 @@ class Video_Display extends React.Component<{
                  .then(mediaStream => {
                      this.props.add_media_stream && this.props.add_media_stream(mediaStream);
                      if ( DEVEL ) {
-                         window.video_stream = mediaStream;
+                         window.devel.video_stream = mediaStream;
                      }
                      this.streams.push(mediaStream);
                      this.setState({ src: window.URL.createObjectURL(mediaStream) });
@@ -383,44 +387,44 @@ export class Video_Recorder extends React.Component<{ viewport: Viewport, orthob
             // TODO: Additional options
         };
         DEBUG('options:', options);
-        kurento_utils.WebRtcPeer.WebRtcPeerSendonly(options, function (error: any) {   // FIXME: remove or fix kurento-utils: Sendonly still manages to receive a lot of data.
+        kurento_utils.WebRtcPeer.WebRtcPeerSendonly(options, function (this: kurento_utils.WebRtcPeer, error: any) {   // FIXME: remove or fix kurento-utils: Sendonly still manages to receive a lot of data.
             if ( error ) {
                 return on_error(error);
             }
             let webRTC_peer = this;  // kurento_utils binds 'this' to the callback, because this function is actually a pile of steaming shit wrapped in an object.
             DEBUG('webRTC_peer:', webRTC_peer);
-            webRTC_peer.generateOffer((error, offer) => {
+            webRTC_peer.generateOffer((error: string | undefined, offer: string) => {
                 let session_data = orthobox.session_data;
                 if ( error ) {
                     return on_error(error);
                 }
-                kurentoClient.KurentoClient(session_data.video_configuration.url).then((client) => {
+                kurentoClient.KurentoClient(session_data.kurento_url).then((client: any) => {
                     DEBUG('got kurento_client:', client);
-                    client.create('MediaPipeline', (error, pipeline) => {
+                    client.create('MediaPipeline', (error: string | undefined, pipeline: any) => {
                         DEBUG('pipeline:', pipeline);
                         let elements =
                             [
                                 {
                                     type: 'RecorderEndpoint',
-                                    params: { uri: `file://${session_data.video_configuration.video_directory}/${session_data.id}.webm` }
+                                    params: { uri: `file://${session_data.kurento_video_directory}/${session_data.id}.webm` }
                                 },
                                 { type: 'WebRtcEndpoint', params: {} }
                             ];
-                        pipeline.create(elements, (error, [recorder, webRTC]) => {
+                        pipeline.create(elements, (error: string | undefined, [recorder, webRTC]: [any, any]) => {
                             if ( error ) {
                                 return on_error(error);
                             }
                             // Set ice callbacks
-                            webRTC_peer.on('icecandidate', (candidate) => {
+                            webRTC_peer.on('icecandidate', (candidate: any) => {
                                 DEBUG('Local candidate:', candidate);
                                 candidate = kurentoClient.getComplexType('IceCandidate')(candidate);
                                 webRTC.addIceCandidate(candidate, on_error);
                             });
-                            webRTC.on('OnIceCandidate', (event) => {
+                            webRTC.on('OnIceCandidate', (event: any) => {
                                 DEBUG('Remote candidate:', event.candidate);
                                 webRTC_peer.addIceCandidate(event.candidate, on_error);
                             });
-                            webRTC.processOffer(offer, (error, answer) => {
+                            webRTC.processOffer(offer, (error: string | undefined, answer: any) => {
                                 if ( error ) {
                                     return on_error(error);
                                 }
@@ -430,12 +434,12 @@ export class Video_Recorder extends React.Component<{ viewport: Viewport, orthob
                                 webRTC_peer.processAnswer(answer);
                             });
                             DEBUG('connecting');
-                            client.connect(webRTC, webRTC, recorder, (error) => {
+                            client.connect(webRTC, webRTC, recorder, (error: string | undefined) => {
                                 if ( error ) {
                                     return on_error(error);
                                 }
                                 DEBUG('connected');
-                                recorder.record(action((error) => {
+                                recorder.record(action((error: string) => {
                                     if ( error ) {
                                         return on_error(error);
                                     }
@@ -459,6 +463,7 @@ export class Video_Recorder extends React.Component<{ viewport: Viewport, orthob
                 });
             });
         });
+        return;
     }
 
     componentWillUnmount() {
