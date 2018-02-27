@@ -5,15 +5,13 @@
 'use strict';
 
 import { Status_Bar, Video_Recorder, orthobox, Orthobox_Component, Orthobox } from "./orthobox_shared_components";
-import { Viewport } from "./UI_utils";
 
 import * as React from 'react';
 import {render} from 'react-dom';
 
-
 orthobox.set_up = true;
 
-class Pokey extends Orthobox_Component<{orthobox: Orthobox}, {viewport: Viewport}> {
+class Pokey extends Orthobox_Component<{}, {}> {
   render() {
     return (
       <div className="flex-container column">

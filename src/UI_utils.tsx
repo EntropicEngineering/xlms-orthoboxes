@@ -31,7 +31,7 @@ export class View_Port<P, S> extends React.Component<P, S & { viewport: Viewport
 }
 
 export class User_Input_State {
-    id: number;
+    id: number = 0;
     @observable message: string = '';
     @observable options: { [option: string]: () => void };
 
@@ -41,9 +41,9 @@ export class User_Input_State {
 }
 
 @observer
-export class User_Input extends React.Component<{ input: User_Input_State }, {}> {
+export class User_Input<P, S> extends View_Port<P & { input: User_Input_State }, S> {
     render() {
-        if (!this.props.input.display) {
+        if ( !this.props.input.display ) {
             return null;
         }
 
@@ -57,6 +57,13 @@ export class User_Input extends React.Component<{ input: User_Input_State }, {}>
             backgroundColor: 'rgba(0,0,0,0.4)',
             padding: 50
         };
+
+        const floor = Math.floor;
+        const width = floor(this.state.viewport.window_width / 5);
+        const height = floor(this.state.viewport.window_height / 5);
+        const top = floor(( this.state.viewport.window_height - height ) / 2);
+        const left = floor(( this.state.viewport.window_width - width ) / 2);
+
 
         const modal_style: React.CSSProperties = {
             backgroundColor: '#fff',
@@ -85,5 +92,20 @@ export class User_Input extends React.Component<{ input: User_Input_State }, {}>
                 </div>
             </div>
         )
+    }
+}
+
+export const user_input_state = new User_Input_State();
+
+export function user_input(message: typeof user_input_state.message, options: typeof user_input_state.options) {
+    user_input_state.options = options;
+    user_input_state.message = message;
+    user_input_state.id++;
+    return user_input_state.id;
+}
+
+export function cancel_user_input(id: number) {
+    if (user_input_state.id === id) {
+        user_input_state.message = '';
     }
 }

@@ -4,7 +4,7 @@
 'use strict';
 
 // TODO: Set based on ENV
-export const DEVEL: true | false | "test" = false; // Set to something truthy for development, something falsey for deployment, or "test" for test deployment with test app.
+export const DEVEL: true | false | "test" = true; // Set to something truthy for development, something falsey for deployment, or "test" for test deployment with test app.
 
 export function DEBUG(...args: any[]) {
     if ( DEVEL ) {
@@ -23,16 +23,12 @@ export function ERROR(...args: any[]) {
 export function noop() {
 }
 
-export function exit() {
-    // TODO: Implementation
-}
-
 declare global {
     interface Window {
         devel: { [name: string]: any };
     }
 }
 if ( DEVEL ) {
-    window.devel = { exit };
+    window.devel = {};
 }
 

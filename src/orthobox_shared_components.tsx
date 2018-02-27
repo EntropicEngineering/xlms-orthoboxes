@@ -1,16 +1,20 @@
 /**
  */
 
-import { DEBUG, DEVEL, ERROR, noop, exit } from './utils';
+import { DEBUG, DEVEL, ERROR, noop } from './utils';
 
-import { User_Input, View_Port, Viewport } from './UI_utils';
 import {
-    session_data_promise,
-    register_USB_message_handlers,
+    User_Input,
+    Viewport,
+    View_Port,
     user_input,
     user_input_state,
-    Window_Closed_Error,
-    send_results
+} from './UI_utils';
+import {
+    exit,
+    session_data_promise,
+    register_USB_message_handlers,
+    send_results, message_handlers,
 } from './XLMS';
 import { REST_Data } from "./XLMS_REST";
 
@@ -22,16 +26,11 @@ import * as kurento_utils from 'kurento-utils';
 import { kurentoClient } from "kurento-client";
 // import 'webrtc-adapter';
 // let kurento_client = kurentoClient.KurentoClient;
-if ( DEVEL ) {
-    window.devel.kurento_utils = kurento_utils;
-    window.devel.kurento_client = kurentoClient;
-}
+if ( DEVEL ) { window.devel.kurento_utils = kurento_utils; window.devel.kurento_client = kurentoClient; window.devel.user_input_state = user_input_state; }
 
 
-export let HID_message_handlers: { [name: string]: (...args: any[]) => void } = {};
-if ( DEVEL ) {
-    window.devel.HID_message_handlers = HID_message_handlers;
-}
+export const handlers: message_handlers = {};
+if ( DEVEL ) { window.devel.HID_message_handlers = handlers; }
 
 export enum ORTHOBOX_STATE {
     Waiting,
@@ -136,9 +135,7 @@ export class Orthobox {
 
 
 export let orthobox = new Orthobox();
-if ( DEVEL ) {
-    window.devel.orthobox = orthobox;
-}
+if ( DEVEL ) { window.devel.orthobox = orthobox; }
 
 
 export function save_raw_event(wrapped: (...args: any[]) => void, name: string) {
@@ -150,46 +147,41 @@ export function save_raw_event(wrapped: (...args: any[]) => void, name: string) 
 }
 
 
-HID_message_handlers.wall_error = action(save_raw_event((timestamp, duration) => {
+handlers.wall_error = action(save_raw_event((timestamp, duration) => {
     if ( orthobox.state === ORTHOBOX_STATE.Exercise ) {
         orthobox.wall_errors.push({ timestamp, duration });
     }
 }, 'wall_error'));
 
 
-HID_message_handlers.drop_error = action(save_raw_event((timestamp, duration) => {
+handlers.drop_error = action(save_raw_event((timestamp, duration) => {
     if ( orthobox.state === ORTHOBOX_STATE.Exercise ) {
         orthobox.drop_errors.push({ timestamp });
     }
 }, 'drop_error'));
 
 
-HID_message_handlers.status = action(save_raw_event(async (timestamp, serial_number, ...status) => {
+handlers.status = action(save_raw_event(async (timestamp, serial_number, ...status) => {
 
     // Big-endian.
     let byte1 = status[3];
 
     // If tool soldered incorrectly.
     if ( byte1 & 1 ) {  // bit-wise and
-        try {
-            user_input('Device Manufactured Incorrectly', { Quit: exit });
-        } catch ( error ) {
-            if ( error instanceof Window_Closed_Error ) {
-                exit();
-            }
-        }
+        user_input('Device Manufactured Incorrectly', { Quit: exit });
     }
 
     // Set tool state based on bits 2 & 3 in 1st byte.
     orthobox.tool_state = ( byte1 >> 1 ) & 0b11;
 
     while ( orthobox.tool_state === TOOL_STATE.Unplugged ) {
+        const promise = new Promise(((resolve, reject) => {
+            user_input('Tool Not Connected', { Retry: resolve, Quit: reject });
+        }));
         try {
-            user_input('Tool Not Connected', { Retry: noop, Quit: exit });
-        } catch ( error ) {
-            if ( error instanceof Window_Closed_Error ) {
-                exit();
-            }
+            await promise;
+        } catch {
+            exit();
         }
     }
 
@@ -200,7 +192,7 @@ HID_message_handlers.status = action(save_raw_event(async (timestamp, serial_num
 }, 'status'));
 
 
-HID_message_handlers.tool = action(save_raw_event((timestamp, state: TOOL_STATE) => {
+handlers.tool = action(save_raw_event((timestamp, state: TOOL_STATE) => {
     orthobox.tool_state = state;
     switch ( state ) {
         case 0:   // Out
@@ -235,7 +227,7 @@ HID_message_handlers.tool = action(save_raw_event((timestamp, state: TOOL_STATE)
     }
 }, 'tool'));
 
-HID_message_handlers.poke = action(save_raw_event((timestamp, location) => {
+handlers.poke = action(save_raw_event((timestamp, location) => {
     if ( orthobox.state === ORTHOBOX_STATE.Exercise ) {
         orthobox.pokes.push({ poke: { timestamp, location } });
         if ( orthobox.pokes.length >= 10 ) {
@@ -244,9 +236,9 @@ HID_message_handlers.poke = action(save_raw_event((timestamp, location) => {
     }
 }, 'poke'));
 
-export class Orthobox_Component<P, S> extends View_Port<P, S> {
+export class Orthobox_Component<P, S> extends View_Port<P & { orthobox: Orthobox }, S> {
     componentDidMount() {
-        register_USB_message_handlers(HID_message_handlers);
+        register_USB_message_handlers(handlers);
     }
 }
 
@@ -323,9 +315,7 @@ class Video_Display extends React.Component<{
         navigator.mediaDevices.getUserMedia({ video: true })
                  .then(mediaStream => {
                      this.props.add_media_stream && this.props.add_media_stream(mediaStream);
-                     if ( DEVEL ) {
-                         window.devel.video_stream = mediaStream;
-                     }
+                     if ( DEVEL ) { window.devel.video_stream = mediaStream; }
                      this.streams.push(mediaStream);
                      this.setState({ src: window.URL.createObjectURL(mediaStream) });
                  })
@@ -352,7 +342,7 @@ class Video_Display extends React.Component<{
 }
 
 @observer
-export class Video_Recorder extends React.Component<{ viewport: Viewport, orthobox: typeof orthobox}, {}> {
+export class Video_Recorder extends React.Component<{ viewport: Viewport, orthobox: Orthobox}, {}> {
     constructor(props: any) {
         super(props);
         this.media_streams = [];

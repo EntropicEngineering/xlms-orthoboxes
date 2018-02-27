@@ -3,60 +3,15 @@
  *
  * API for plugins.
  */
-"use strict";
 
-
-import { DEVEL, DEBUG, WARN, ERROR } from "./utils";
-import { User_Input_State } from "./UI_utils";
-
-
-export class Window_Closed_Error extends Error {}
-
-
-let HID_handler = { func: (event) => HID_handler.cache.push(event.data), cache: [] };   // By default, cache messsages for later.
-
-
-function send(request) {
-    return new Promise((resolve, reject) => {
-        user_input_port.postMessage(request);
-        respond = resolve;
-    });
-}
-
-
-function handle_user_input_response(event) {
-    if ( respond !== null ) {
-        let { result } = event.data;
-        DEBUG(`respond(${result})`);
-        respond(result);
-        respond = null;
-    } else {
-        WARN("unhandled event:", event);
-    }
-}
-
-export const user_input_state = new User_Input_State();
-if (DEVEL) {
-    window.devel.user_input_state = user_input_state;
-}
-
-export function user_input(message: typeof user_input_state.message, options: typeof user_input_state.options) {
-    user_input_state.id++;
-    user_input_state.options = options;
-    user_input_state.message = message;
-}
-
-export function cancel_user_input(id: number) {
-    if (user_input_state.id === id) {
-        user_input_state.message = '';
-    }
-}
+import { DEVEL, DEBUG, ERROR } from "./utils";
 
 
 /**
  * Takes an object with HID message names as keys and function to call for each message as values.
  */
-export function register_USB_message_handlers(handlers) {
+export interface message_handlers {[name: string]: (...args: any[]) => void}
+export function register_USB_message_handlers(handlers: message_handlers) {
     function handle(message) {
         DEBUG(message);
         let { name, data } = message;
@@ -110,5 +65,6 @@ export function send_results(results) {
 
 
 export function exit() {
-    admin_message_port.postMessage({ type: "exit" })
+    // TODO: Forward accordingly
 }
+if (DEVEL) { window.devel.exit = exit; }
