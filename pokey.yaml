@@ -1,0 +1,52 @@
+--- # Pokey
+interface: index.html
+
+hardware:
+  - vendorId: 1209
+    productId: 2800
+
+configuration:
+  - description:  "Hardware Task Timeout"
+    default:      0
+  - description:  "Error threshold length in ms"
+    default:      250
+  - description:  "Target 1"
+    default:      0
+  - description:  "Target 2"
+    default:      2
+  - description:  "Target 3"
+    default:      4
+  - description:  "Target 4"
+    default:      6
+  - description:  "Target 5"
+    default:      8
+  - description:  "Target 6"
+    default:      9
+  - description:  "Target 7"
+    default:      7
+  - description:  "Target 8"
+    default:      5
+  - description:  "Target 9"
+    default:      3
+  - description:  "Target 10"
+    default:      1
+
+metrics:
+  elapsed_time:
+    description:    "Time taken to complete the Triangulation task; minimum value is best possible score."
+    values:
+      - unit:      Seconds
+        threshold:  maximum
+        default:    150
+
+      - unit:      Seconds
+        threshold:  minimum
+        default:    60
+
+  wall_error_count:
+    description:    "Number of touch errors allowed."
+    values:
+      - unit:      Count
+        threshold:  maximum
+        default:    0
+...

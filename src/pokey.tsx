@@ -4,7 +4,7 @@
 
 'use strict';
 
-import { Status_Bar, Video_Recorder, orthobox, Orthobox_Component, Orthobox } from "./orthobox_shared_components";
+import { Status_Bar, Video_Recorder, orthobox, Orthobox_Component } from "./orthobox_shared_components";
 
 import * as React from 'react';
 import {render} from 'react-dom';

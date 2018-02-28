@@ -2,9 +2,8 @@
  * 'Magic' constant strings collected in one place.
  */
 
-// Key names provided by REST API, used to normalize data for chrime.hid API.
-export const vendor_ID_key = 'vendorID';
-export const product_ID_key = 'deviceID';
+export const module_identifier = "xlms_session";
+export const endpoint_identifier = "endpoint";
 
 const vendorId = 1209;
 

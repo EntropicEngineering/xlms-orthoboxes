@@ -5,7 +5,7 @@
 import {
     Status_Bar,
     Video_Recorder,
-    handlers,
+    HID_handlers,
     orthobox,
     save_raw_event,
     ORTHOBOX_STATE,
@@ -32,7 +32,7 @@ function all_right() {
 
 let task = 'ltr';
 
-handlers.peg = action(save_raw_event((timestamp, location, state) => {
+HID_handlers.peg = action(save_raw_event(({timestamp, location, state}) => {
     pegs[location] = Boolean(state);
     switch ( orthobox.state ) {
         case ORTHOBOX_STATE.Waiting:
@@ -51,8 +51,8 @@ handlers.peg = action(save_raw_event((timestamp, location, state) => {
 }, "peg"));
 
 
-let wrapped_status_func = handlers.status;
-handlers.status = action((timestamp, ...status: Array<number>) => {
+let wrapped_status_func = HID_handlers.status;
+HID_handlers.status = action(({timestamp, status}) => {
     // Big-endian
     let byte2 = status[2];
     for ( let i = 0; i < 6; i++ ) {
@@ -64,7 +64,7 @@ handlers.status = action((timestamp, ...status: Array<number>) => {
     if ( all_left() ) {
         orthobox.set_up = true;
     }
-    wrapped_status_func(timestamp, ...status);
+    wrapped_status_func({timestamp, status});
 });
 
 

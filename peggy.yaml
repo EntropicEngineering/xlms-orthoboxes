@@ -1,0 +1,39 @@
+--- # Peggy
+interface: index.html
+
+hardware:
+  - vendorId: 1209
+    productId: 2801
+
+configuration:
+  - description:  "Hardware Task Timeout"
+    default:      0
+  - description:  "Error threshold length in ms"
+    default:      250
+
+metrics:
+  elapsed_time:
+    description:    "Time taken to complete the Object Manipulation task; minimum value is best possible score."
+    values:
+      - unit:       Seconds
+        threshold:  maximum
+        default:    180
+
+      - unit:       Seconds
+        threshold:  minimum
+        default:    100
+
+  wall_error_count:
+    description:    "Number of touch errors allowed."
+    values:
+      - unit:       Count
+        threshold:  maximum
+        default:    0
+
+  drop_error_count:
+    description:    "Number of drops allowed."
+    values:
+      - unit:       Count
+        threshold:  maximum
+        default:    0
+...

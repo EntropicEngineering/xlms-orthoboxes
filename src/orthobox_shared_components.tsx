@@ -11,12 +11,13 @@ import {
     user_input_state,
 } from './UI_utils';
 import {
+    REST_Data,
     exit,
-    session_data_promise,
-    register_USB_message_handlers,
-    send_results, message_handlers,
+    initialize_device,
+    send_results,
+    message_handlers,
+    fetch_session_data,
 } from './XLMS';
-import { REST_Data } from "./XLMS_REST";
 
 import * as React from 'react';
 import { findDOMNode } from 'react-dom';
@@ -29,8 +30,8 @@ import { kurentoClient } from "kurento-client";
 if ( DEVEL ) { window.devel.kurento_utils = kurento_utils; window.devel.kurento_client = kurentoClient; window.devel.user_input_state = user_input_state; }
 
 
-export const handlers: message_handlers = {};
-if ( DEVEL ) { window.devel.HID_message_handlers = handlers; }
+export const HID_handlers: message_handlers = {};
+if ( DEVEL ) { window.devel.HID_handlers = HID_handlers; }
 
 export enum ORTHOBOX_STATE {
     Waiting,
@@ -53,7 +54,22 @@ function on_error(message: string) {
 
 export interface Session_Data extends REST_Data {
     course_name?: string,
-    exercise_name?: string
+    exercise_name?: string,
+    metrics: {
+        elapsed_time: {
+            maximum: string,
+            minimum: string
+        },
+        wall_error_count: {
+            maximum: string
+        },
+        wall_error_length: {
+            maximum: string
+        },
+        drop_error_count?: {
+            maximum: string
+        }
+    }
 }
 
 export class Orthobox {
@@ -126,8 +142,8 @@ export class Orthobox {
         }
         return {
             success,
-            start_time: this.start_time,
-            elapsed_time: this.elapsed_time,
+            start_time: this.start_time!,
+            elapsed_time: this.elapsed_time!,
             results: { wall_errors: toJS(this.wall_errors), drop_errors: toJS(this.drop_errors) }
         };
     }
@@ -147,21 +163,21 @@ export function save_raw_event(wrapped: (...args: any[]) => void, name: string) 
 }
 
 
-handlers.wall_error = action(save_raw_event((timestamp, duration) => {
+HID_handlers.wall_error = action(save_raw_event(({timestamp, duration}) => {
     if ( orthobox.state === ORTHOBOX_STATE.Exercise ) {
         orthobox.wall_errors.push({ timestamp, duration });
     }
 }, 'wall_error'));
 
 
-handlers.drop_error = action(save_raw_event((timestamp, duration) => {
+HID_handlers.drop_error = action(save_raw_event(({timestamp, duration}) => {
     if ( orthobox.state === ORTHOBOX_STATE.Exercise ) {
         orthobox.drop_errors.push({ timestamp });
     }
 }, 'drop_error'));
 
 
-handlers.status = action(save_raw_event(async (timestamp, serial_number, ...status) => {
+HID_handlers.status = action(save_raw_event(async ({timestamp, ...status}) => {
 
     // Big-endian.
     let byte1 = status[3];
@@ -192,7 +208,7 @@ handlers.status = action(save_raw_event(async (timestamp, serial_number, ...stat
 }, 'status'));
 
 
-handlers.tool = action(save_raw_event((timestamp, state: TOOL_STATE) => {
+HID_handlers.tool = action(save_raw_event(({timestamp, state}) => {
     orthobox.tool_state = state;
     switch ( state ) {
         case 0:   // Out
@@ -227,7 +243,7 @@ handlers.tool = action(save_raw_event((timestamp, state: TOOL_STATE) => {
     }
 }, 'tool'));
 
-handlers.poke = action(save_raw_event((timestamp, location) => {
+HID_handlers.poke = action(save_raw_event(({timestamp, location}) => {
     if ( orthobox.state === ORTHOBOX_STATE.Exercise ) {
         orthobox.pokes.push({ poke: { timestamp, location } });
         if ( orthobox.pokes.length >= 10 ) {
@@ -238,7 +254,7 @@ handlers.poke = action(save_raw_event((timestamp, location) => {
 
 export class Orthobox_Component<P, S> extends View_Port<P & { orthobox: Orthobox }, S> {
     componentDidMount() {
-        register_USB_message_handlers(handlers);
+        initialize_device(this.props.orthobox.session_data, HID_handlers);
     }
 }
 
@@ -471,6 +487,4 @@ export class Video_Recorder extends React.Component<{ viewport: Viewport, orthob
     }
 }
 
-session_data_promise.then((session_data: Session_Data) => {
-    Object.assign(orthobox.session_data, session_data);
-});
+Object.assign(orthobox.session_data, fetch_session_data());

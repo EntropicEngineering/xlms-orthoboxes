@@ -15,8 +15,8 @@
   "interface": "https://demo.xlms.org/sites/demo.xlms.org/files/devices/operation_7/assets/index.html",
   "hardware": [
     {
-      "vendorID": 1003,
-      "deviceID": 8256
+      "vendorId": 1003,
+      "productId": 8256
     }
   ],
   "metrics": {
