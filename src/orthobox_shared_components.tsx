@@ -180,7 +180,7 @@ HID_handlers.drop_error = action(save_raw_event(({timestamp, duration}) => {
 HID_handlers.status = action(save_raw_event(async ({timestamp, ...status}) => {
 
     // Big-endian.
-    let byte1 = status[3];
+    let byte1 = status[0];
 
     // If tool soldered incorrectly.
     if ( byte1 & 1 ) {  // bit-wise and

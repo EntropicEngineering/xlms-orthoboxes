@@ -25,7 +25,7 @@ class Pokey extends Orthobox_Component<{}, {}> {
 
 render(
   <Pokey orthobox={orthobox}/>,
-  document.getElementById('content')
+  document.getElementById('pokey_app')
 );
 
 

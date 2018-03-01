@@ -121,5 +121,5 @@ class Peggy extends Orthobox_Component<{}, {}> {
 
 render(
     <Peggy orthobox={orthobox}/>,
-    document.getElementById('content')
+    document.getElementById('peggy_app')
 );
