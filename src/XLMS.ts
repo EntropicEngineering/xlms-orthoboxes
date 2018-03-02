@@ -11,7 +11,7 @@ import { module_identifier, endpoint_identifier } from "./constants"
 
 // Drupal-injected JS object
 declare const Drupal: any;
-const endpoint = new Promise<string>(( (resolve) => {
+const endpoint = new Promise<string>((resolve) => {
     function poll() {
         const endpoint: string = Drupal.settings[module_identifier][endpoint_identifier];
         DEBUG(endpoint);
@@ -22,8 +22,8 @@ const endpoint = new Promise<string>(( (resolve) => {
         }
     }
 
-    poll();
-} ));
+    // poll();
+});
 
 export interface REST_Data {
     id: string,

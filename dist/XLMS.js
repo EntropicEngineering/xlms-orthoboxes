@@ -7,7 +7,7 @@ import { DEVEL, DEBUG, ERROR } from "./utils";
 import { Device } from "simple-hid";
 import { user_input } from "./UI_utils";
 import { module_identifier, endpoint_identifier } from "./constants";
-const endpoint = new Promise(((resolve) => {
+const endpoint = new Promise((resolve) => {
     function poll() {
         const endpoint = Drupal.settings[module_identifier][endpoint_identifier];
         DEBUG(endpoint);
@@ -18,8 +18,8 @@ const endpoint = new Promise(((resolve) => {
             setTimeout(poll, 1);
         }
     }
-    poll();
-}));
+    // poll();
+});
 /**
  * Takes an object with HID message names as keys and function to call for each message as values.
  */

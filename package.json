@@ -11,7 +11,6 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "kurento-client": "^6.6.0",
     "kurento-utils": "^6.7.0",
     "mobx": "^3.6.0",
     "mobx-react": "^4.4.2",
@@ -30,7 +29,7 @@
     "rollup": "^0.56.3",
     "rollup-plugin-commonjs": "^8.3.0",
     "rollup-plugin-node-builtins": "^2.1.2",
-    "rollup-plugin-node-globals": "^1.1.0",
+    "rollup-plugin-node-globals": "file:../rollup-plugin-node-globals/rollup-plugin-node-globals-1.2.0.tgz",
     "rollup-plugin-node-resolve": "^3.0.3",
     "ts-jest": "^22.4.0",
     "typescript": "^2.7.2"

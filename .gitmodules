@@ -1,0 +1,3 @@
+[submodule "kurento-client-bower"]
+	path = kurento-client-bower
+	url = git@github.com:Kurento/kurento-client-bower.git

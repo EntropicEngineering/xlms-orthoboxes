@@ -10,13 +10,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 import * as React from 'react';
 import { observer } from 'mobx-react';
 import { observable, computed } from 'mobx';
+import { DEBUG } from "./utils";
 export class View_Port extends React.Component {
-    constructor(props) {
-        super(props);
-        this.handle_resize();
-    }
     handle_resize() {
+        DEBUG("handle_resize");
         this.setState({ viewport: { window_width: window.innerWidth, window_height: window.innerHeight } });
+    }
+    componentWillMount() {
+        this.handle_resize();
     }
     componentDidMount() {
         window.addEventListener('resize', this.handle_resize.bind(this));

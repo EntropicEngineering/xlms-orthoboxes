@@ -23,10 +23,11 @@ import * as React from 'react';
 import { findDOMNode } from 'react-dom';
 import { observer } from 'mobx-react';
 import { observable, computed, action, toJS } from 'mobx';
+// import { kurentoClient } from "../kurento-client-bower/js/kurento-client.min.js";
 import * as kurento_utils from 'kurento-utils';
-import { kurentoClient } from "kurento-client";
 // import 'webrtc-adapter';
-// let kurento_client = kurentoClient.KurentoClient;
+declare const kurentoClient: any;
+const kurento_client = kurentoClient.KurentoClient;
 if ( DEVEL ) { window.devel.kurento_utils = kurento_utils; window.devel.kurento_client = kurentoClient; window.devel.user_input_state = user_input_state; }
 
 
@@ -102,7 +103,7 @@ export class Orthobox {
     raw_events: Array<{ [name: string]: Array<any> }> = [];
     stop_recording = () => DEBUG('stop_recording but nothing to do.');
 
-    end_exercise() {
+    async end_exercise() {
         this.stop_recording();
         this.end_time = Date.now();
         this.state = ORTHOBOX_STATE.Finished;
@@ -111,7 +112,7 @@ export class Orthobox {
         }
         Object.assign(this.session_data, this.results);
         // send_results(this.session_data);
-        send_results(this.results);
+        await send_results(this.results);
         user_input(`You took ${Math.floor(this.results.elapsed_time as number / 1000)} seconds and made ${this.error_count} errors.`, { Exit: exit });
     }
 
@@ -179,7 +180,6 @@ HID_handlers.drop_error = action(save_raw_event(({timestamp, duration}) => {
 
 HID_handlers.status = action(save_raw_event(async ({timestamp, ...status}) => {
 
-    // Big-endian.
     let byte1 = status[0];
 
     // If tool soldered incorrectly.
@@ -254,7 +254,7 @@ HID_handlers.poke = action(save_raw_event(({timestamp, location}) => {
 
 export class Orthobox_Component<P, S> extends View_Port<P & { orthobox: Orthobox }, S> {
     componentDidMount() {
-        initialize_device(this.props.orthobox.session_data, HID_handlers);
+        // initialize_device(this.props.orthobox.session_data, HID_handlers);
     }
 }
 
@@ -279,28 +279,31 @@ export class Status_Bar extends React.Component<{orthobox: Orthobox}, {}> {
         }
         return (
             <div id="user_input_modal">
-                <div id="status_bar" className="flex-grow flex-container row">
-                    {/*<h2 id="student_name"> {orthobox.session_data.user_display_name} </h2>*/}
-                    {/*<div className="flex-item">*/}
-                    {/*<h2 id="student_name"> user_display_name </h2>*/}
-                    {/*</div>*/}
-                    <div className="flex-grow flex-container column">
-                        <div className="flex-grow">
-                            <h3 id="course_name"> {orthobox.session_data.course_name} </h3>
-                            {/*<h3 id="course_name"> course_name </h3>*/}
+                {( orthobox.session_data !== undefined ) ?
+                    <div id="status_bar" className="flex-grow flex-container row">
+                        {/*<h2 id="student_name"> {orthobox.session_data.user_display_name} </h2>*/}
+                        {/*<div className="flex-item">*/}
+                        {/*<h2 id="student_name"> user_display_name </h2>*/}
+                        {/*</div>*/}
+                        <div className="flex-grow flex-container column">
+                            <div className="flex-grow">
+                                <h3 id="course_name"> {orthobox.session_data.course_name} </h3>
+                                {/*<h3 id="course_name"> course_name </h3>*/}
+                            </div>
+                            <div className="flex-grow">
+                                <h3 id="exercise_name"> {orthobox.session_data.exercise_name} </h3>
+                                {/*<h3 id="exercise_name"> exercise_name </h3>*/}
+                            </div>
                         </div>
                         <div className="flex-grow">
-                            <h3 id="exercise_name"> {orthobox.session_data.exercise_name} </h3>
-                            {/*<h3 id="exercise_name"> exercise_name </h3>*/}
+                            <h2 id="timer"> {timer} </h2>
+                        </div>
+                        <div className="flex-grow">
+                            <h3 id="error_count"> {error_count} </h3>
                         </div>
                     </div>
-                    <div className="flex-grow">
-                        <h2 id="timer"> {timer} </h2>
-                    </div>
-                    <div className="flex-grow">
-                        <h3 id="error_count"> {error_count} </h3>
-                    </div>
-                </div>
+                    : <h2> Loading </h2>
+                }
                 <User_Input input={user_input_state}/>
             </div>
         );
@@ -487,4 +490,4 @@ export class Video_Recorder extends React.Component<{ viewport: Viewport, orthob
     }
 }
 
-Object.assign(orthobox.session_data, fetch_session_data());
+fetch_session_data().then(session_data => Object.assign(orthobox.session_data, session_data));

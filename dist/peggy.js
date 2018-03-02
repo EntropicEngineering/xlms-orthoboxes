@@ -42,7 +42,7 @@ HID_handlers.peg = action(save_raw_event(({ timestamp, location, state }) => {
 let wrapped_status_func = HID_handlers.status;
 HID_handlers.status = action(({ timestamp, status }) => {
     // Big-endian
-    let byte2 = status[2];
+    let byte2 = status[1];
     for (let i = 0; i < 6; i++) {
         let mask = 2 ** i;
         // Assign initial peg status.

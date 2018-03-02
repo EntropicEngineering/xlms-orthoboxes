@@ -17,15 +17,14 @@ var __rest = (this && this.__rest) || function (s, e) {
 };
 import { DEBUG, DEVEL, ERROR, noop } from './utils';
 import { User_Input, View_Port, user_input, user_input_state, } from './UI_utils';
-import { exit, initialize_device, send_results, fetch_session_data, } from './XLMS';
+import { exit, send_results, fetch_session_data, } from './XLMS';
 import * as React from 'react';
 import { findDOMNode } from 'react-dom';
 import { observer } from 'mobx-react';
 import { observable, computed, action, toJS } from 'mobx';
+// import { kurentoClient } from "../kurento-client-bower/js/kurento-client.min.js";
 import * as kurento_utils from 'kurento-utils';
-import { kurentoClient } from "kurento-client";
-// import 'webrtc-adapter';
-// let kurento_client = kurentoClient.KurentoClient;
+const kurento_client = kurentoClient.KurentoClient;
 if (DEVEL) {
     window.devel.kurento_utils = kurento_utils;
     window.devel.kurento_client = kurentoClient;
@@ -76,7 +75,7 @@ export class Orthobox {
     get error_count() {
         return this.wall_errors.length + this.drop_errors.length;
     }
-    end_exercise() {
+    async end_exercise() {
         this.stop_recording();
         this.end_time = Date.now();
         this.state = ORTHOBOX_STATE.Finished;
@@ -85,7 +84,7 @@ export class Orthobox {
         }
         Object.assign(this.session_data, this.results);
         // send_results(this.session_data);
-        send_results(this.results);
+        await send_results(this.results);
         user_input(`You took ${Math.floor(this.results.elapsed_time / 1000)} seconds and made ${this.error_count} errors.`, { Exit: exit });
     }
     start_exercise() {
@@ -185,7 +184,6 @@ HID_handlers.drop_error = action(save_raw_event(({ timestamp, duration }) => {
 }, 'drop_error'));
 HID_handlers.status = action(save_raw_event(async (_a) => {
     var { timestamp } = _a, status = __rest(_a, ["timestamp"]);
-    // Big-endian.
     let byte1 = status[0];
     // If tool soldered incorrectly.
     if (byte1 & 1) {
@@ -252,7 +250,7 @@ HID_handlers.poke = action(save_raw_event(({ timestamp, location }) => {
 }, 'poke'));
 export class Orthobox_Component extends View_Port {
     componentDidMount() {
-        initialize_device(this.props.orthobox.session_data, HID_handlers);
+        // initialize_device(this.props.orthobox.session_data, HID_handlers);
     }
 }
 let Status_Bar = class Status_Bar extends React.Component {
@@ -274,28 +272,30 @@ let Status_Bar = class Status_Bar extends React.Component {
                 break;
         }
         return (React.createElement("div", { id: "user_input_modal" },
-            React.createElement("div", { id: "status_bar", className: "flex-grow flex-container row" },
-                React.createElement("div", { className: "flex-grow flex-container column" },
+            (orthobox.session_data !== undefined) ?
+                React.createElement("div", { id: "status_bar", className: "flex-grow flex-container row" },
+                    React.createElement("div", { className: "flex-grow flex-container column" },
+                        React.createElement("div", { className: "flex-grow" },
+                            React.createElement("h3", { id: "course_name" },
+                                " ",
+                                orthobox.session_data.course_name,
+                                " ")),
+                        React.createElement("div", { className: "flex-grow" },
+                            React.createElement("h3", { id: "exercise_name" },
+                                " ",
+                                orthobox.session_data.exercise_name,
+                                " "))),
                     React.createElement("div", { className: "flex-grow" },
-                        React.createElement("h3", { id: "course_name" },
+                        React.createElement("h2", { id: "timer" },
                             " ",
-                            orthobox.session_data.course_name,
+                            timer,
                             " ")),
                     React.createElement("div", { className: "flex-grow" },
-                        React.createElement("h3", { id: "exercise_name" },
+                        React.createElement("h3", { id: "error_count" },
                             " ",
-                            orthobox.session_data.exercise_name,
-                            " "))),
-                React.createElement("div", { className: "flex-grow" },
-                    React.createElement("h2", { id: "timer" },
-                        " ",
-                        timer,
-                        " ")),
-                React.createElement("div", { className: "flex-grow" },
-                    React.createElement("h3", { id: "error_count" },
-                        " ",
-                        error_count,
-                        " "))),
+                            error_count,
+                            " ")))
+                : React.createElement("h2", null, " Loading "),
             React.createElement(User_Input, { input: user_input_state })));
     }
 };
@@ -453,5 +453,5 @@ Video_Recorder = __decorate([
     observer
 ], Video_Recorder);
 export { Video_Recorder };
-Object.assign(orthobox.session_data, fetch_session_data());
+fetch_session_data().then(session_data => Object.assign(orthobox.session_data, session_data));
 //# sourceMappingURL=orthobox_shared_components.js.map

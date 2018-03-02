@@ -6,10 +6,8 @@ import commonjs from 'rollup-plugin-commonjs';
 const plugins = [
   resolve({
     browser: true,
-    jsnext: true
+    jsnext: true,
   }),
-  // globals(),
-  builtins(),
   commonjs({
     namedExports: {
       'react': ['Children', 'Component', 'createElement'],
@@ -17,6 +15,15 @@ const plugins = [
       'kurento-client': ['kurentoClient']
     }
   }),
+  builtins(),
+  globals(),
+];
+
+const external = [
+  'react',
+  'react-dom',
+  'mobx',
+  'mobx-react',
 ];
 
 export default [{
@@ -27,14 +34,16 @@ export default [{
     sourcemap: true,
     interop: false,
   }],
-  plugins: plugins
-// }, {
-//   input: './dist/pokey.js',
-//   output: [{
-//     format: 'es',
-//     file: './pokey_bundle.js',
-//     sourcemap: true,
-//     interop: false,
-//   }],
-//   plugins: plugins
+  plugins,
+  // external
+}, {
+  input: './dist/pokey.js',
+  output: [{
+    format: 'es',
+    file: './pokey_bundle.js',
+    sourcemap: true,
+    interop: false,
+  }],
+  plugins,
+  // external
 }];

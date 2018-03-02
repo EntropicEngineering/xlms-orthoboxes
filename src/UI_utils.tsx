@@ -5,20 +5,21 @@
 import * as React from 'react';
 import { observer } from 'mobx-react';
 import { observable, computed } from 'mobx';
+import { DEBUG } from "./utils";
 
 export interface Viewport {
     window_width: number,
     window_height: number
 }
 
-export class View_Port<P, S> extends React.Component<P, S & { viewport: Viewport }> {
-    constructor(props: any) {
-        super(props);
-        this.handle_resize();
+export class View_Port<P, S> extends React.Component<P, { viewport: Viewport } & S> {
+    handle_resize() {
+        DEBUG("handle_resize");
+        this.setState({ viewport: { window_width: window.innerWidth, window_height: window.innerHeight } });
     }
 
-    handle_resize() {
-        this.setState({ viewport: { window_width: window.innerWidth, window_height: window.innerHeight } });
+    componentWillMount() {
+        this.handle_resize();
     }
 
     componentDidMount() {
