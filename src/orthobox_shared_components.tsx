@@ -24,11 +24,10 @@ import { findDOMNode } from 'react-dom';
 import { observer } from 'mobx-react';
 import { observable, computed, action, toJS } from 'mobx';
 // import { kurentoClient } from "../kurento-client-bower/js/kurento-client.min.js";
+declare const kurentoClient: any;
 import * as kurento_utils from 'kurento-utils';
 // import 'webrtc-adapter';
-declare const kurentoClient: any;
-const kurento_client = kurentoClient.KurentoClient;
-if ( DEVEL ) { window.devel.kurento_utils = kurento_utils; window.devel.kurento_client = kurentoClient; window.devel.user_input_state = user_input_state; }
+if ( DEVEL ) { window.devel.kurento_utils = kurento_utils; window.devel.kurento_client = kurentoClient.kurentoClient; window.devel.user_input_state = user_input_state; }
 
 
 export const HID_handlers: message_handlers = {};
@@ -253,8 +252,10 @@ HID_handlers.poke = action(save_raw_event(({timestamp, location}) => {
 }, 'poke'));
 
 export class Orthobox_Component<P, S> extends View_Port<P & { orthobox: Orthobox }, S> {
-    componentDidMount() {
-        // initialize_device(this.props.orthobox.session_data, HID_handlers);
+    componentWillMount() {
+        const session_data = fetch_session_data();
+        initialize_device(session_data, HID_handlers);
+        Object.assign(orthobox.session_data, session_data);
     }
 }
 
@@ -302,7 +303,8 @@ export class Status_Bar extends React.Component<{orthobox: Orthobox}, {}> {
                             <h3 id="error_count"> {error_count} </h3>
                         </div>
                     </div>
-                    : <h2> Loading </h2>
+                    :
+                    <div className="flex-grow"><h2> Loading </h2></div>
                 }
                 <User_Input input={user_input_state}/>
             </div>
@@ -489,5 +491,3 @@ export class Video_Recorder extends React.Component<{ viewport: Viewport, orthob
         );
     }
 }
-
-fetch_session_data().then(session_data => Object.assign(orthobox.session_data, session_data));

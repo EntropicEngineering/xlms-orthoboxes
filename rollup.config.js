@@ -46,4 +46,14 @@ export default [{
   }],
   plugins,
   // external
+}, {
+  input: './dist/XLMS_loader.js',
+  output: [{
+    format: 'es',
+    file: './XLMS_loader_bundle.js',
+    sourcemap: true,
+    interop: false,
+  }],
+  plugins,
+  // external
 }];

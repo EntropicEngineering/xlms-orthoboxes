@@ -91,7 +91,7 @@ class Peg extends React.Component<{ id: number, window_height: number, window_wi
 class Peggy_Display extends React.Component<{ viewport: Viewport }, {}> {
     render() {
         return (
-            <div id="peggy_display" className="flex-grow flex-container row">
+            <div id="peggy_display" className="flex-grow flex-container row centered">
                 <div className="flex-grow flex-container column">
                     {[0, 1, 2].map(id => <Peg key={id} id={id} {...this.props.viewport}/>)}
                 </div>

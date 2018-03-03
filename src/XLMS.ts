@@ -6,24 +6,7 @@
 
 import { DEVEL, DEBUG, ERROR } from "./utils";
 import { Device, Report } from "simple-hid";
-import { user_input } from "./UI_utils";
-import { module_identifier, endpoint_identifier } from "./constants"
-
-// Drupal-injected JS object
-declare const Drupal: any;
-const endpoint = new Promise<string>((resolve) => {
-    function poll() {
-        const endpoint: string = Drupal.settings[module_identifier][endpoint_identifier];
-        DEBUG(endpoint);
-        if ( endpoint !== undefined ) {
-            resolve(endpoint);
-        } else {
-            setTimeout(poll, 1);
-        }
-    }
-
-    // poll();
-});
+import { session_data_identifier, endpoint_identifier, redirect_identifier } from "./constants"
 
 export interface REST_Data {
     id: string,
@@ -82,29 +65,8 @@ export async function initialize_device(session_data: REST_Data, handlers: messa
 }
 
 
-export async function fetch_session_data() {
-    async function retrieve() {
-        try {
-            return await fetch(await endpoint).then(response => response.json());
-        } catch ( error ) {
-            DEBUG(error);
-            try {
-                return await new Promise(( (resolve, reject) => {
-                    user_input(`Error: ${error.message}`, {
-                        Retry: () => resolve(retrieve()),
-                        Exit: reject
-                    });
-                } ));
-            } catch {
-                exit();
-            }
-        }
-    }
-
-    let REST_data = await retrieve() as REST_Data;
-    DEBUG(REST_data);
-
-    return REST_data;
+export function fetch_session_data() {
+    return JSON.parse(sessionStorage.getItem(session_data_identifier)!) as REST_Data;
 }
 
 
@@ -119,7 +81,8 @@ export interface Results {
 }
 
 export async function send_results(results: Results) {
-    let response = await fetch(await endpoint, {
+    const endpoint = sessionStorage.getItem(endpoint_identifier)!;
+    let response = await fetch(new URL(endpoint).href, {
         method: 'put',
         headers: {
             'Content-type': 'application/json; charset=UTF-8'
@@ -131,7 +94,7 @@ export async function send_results(results: Results) {
 }
 
 export function exit() {
-    // TODO: Forward accordingly
+    location.replace(new URL(sessionStorage.getItem(redirect_identifier)!).href)
 }
 
 if ( DEVEL ) { window.devel.exit = exit; }

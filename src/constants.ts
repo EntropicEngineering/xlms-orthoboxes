@@ -2,7 +2,8 @@
  * 'Magic' constant strings collected in one place.
  */
 
-export const module_identifier = "xlms_session";
+export const session_data_identifier = "session_data";
+export const redirect_identifier = "redirect_URL";
 export const endpoint_identifier = "endpoint";
 
 const vendorId = 1209;

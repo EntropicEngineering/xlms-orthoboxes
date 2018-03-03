@@ -17,17 +17,16 @@ var __rest = (this && this.__rest) || function (s, e) {
 };
 import { DEBUG, DEVEL, ERROR, noop } from './utils';
 import { User_Input, View_Port, user_input, user_input_state, } from './UI_utils';
-import { exit, send_results, fetch_session_data, } from './XLMS';
+import { exit, initialize_device, send_results, fetch_session_data, } from './XLMS';
 import * as React from 'react';
 import { findDOMNode } from 'react-dom';
 import { observer } from 'mobx-react';
 import { observable, computed, action, toJS } from 'mobx';
-// import { kurentoClient } from "../kurento-client-bower/js/kurento-client.min.js";
 import * as kurento_utils from 'kurento-utils';
-const kurento_client = kurentoClient.KurentoClient;
+// import 'webrtc-adapter';
 if (DEVEL) {
     window.devel.kurento_utils = kurento_utils;
-    window.devel.kurento_client = kurentoClient;
+    window.devel.kurento_client = kurentoClient.kurentoClient;
     window.devel.user_input_state = user_input_state;
 }
 export const HID_handlers = {};
@@ -249,8 +248,10 @@ HID_handlers.poke = action(save_raw_event(({ timestamp, location }) => {
     }
 }, 'poke'));
 export class Orthobox_Component extends View_Port {
-    componentDidMount() {
-        // initialize_device(this.props.orthobox.session_data, HID_handlers);
+    componentWillMount() {
+        const session_data = fetch_session_data();
+        initialize_device(session_data, HID_handlers);
+        Object.assign(orthobox.session_data, session_data);
     }
 }
 let Status_Bar = class Status_Bar extends React.Component {
@@ -295,7 +296,9 @@ let Status_Bar = class Status_Bar extends React.Component {
                             " ",
                             error_count,
                             " ")))
-                : React.createElement("h2", null, " Loading "),
+                :
+                    React.createElement("div", { className: "flex-grow" },
+                        React.createElement("h2", null, " Loading ")),
             React.createElement(User_Input, { input: user_input_state })));
     }
 };
@@ -453,5 +456,4 @@ Video_Recorder = __decorate([
     observer
 ], Video_Recorder);
 export { Video_Recorder };
-fetch_session_data().then(session_data => Object.assign(orthobox.session_data, session_data));
 //# sourceMappingURL=orthobox_shared_components.js.map

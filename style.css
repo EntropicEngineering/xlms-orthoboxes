@@ -1,0 +1,42 @@
+body {
+    font-family: 'Source Sans Pro', sans-serif;
+}
+
+.flex-grow {
+    flex: 1 1 auto;
+    text-align: center;
+}
+
+.flex-container {
+    display: flex;
+}
+
+.row {
+    flex-direction: row;
+}
+
+.column {
+    flex-direction: column;
+}
+
+.centered {
+    justify-content: center;
+    align-content: center;
+}
+
+.spread {
+    justify-content: space-around;
+    align-content: space-around;
+}
+
+#peggy_display {
+    flex: 0.33 1 auto;
+}
+
+video {
+    width: 100%;
+}
+
+button {
+    flex: 0 1 auto;
+}

@@ -72,7 +72,7 @@ Peg = __decorate([
 ], Peg);
 class Peggy_Display extends React.Component {
     render() {
-        return (React.createElement("div", { id: "peggy_display", className: "flex-grow flex-container row" },
+        return (React.createElement("div", { id: "peggy_display", className: "flex-grow flex-container row centered" },
             React.createElement("div", { className: "flex-grow flex-container column" }, [0, 1, 2].map(id => React.createElement(Peg, Object.assign({ key: id, id: id }, this.props.viewport)))),
             React.createElement("div", { className: "flex-grow flex-container column" }, [3, 4, 5].map(id => React.createElement(Peg, Object.assign({ key: id, id: id }, this.props.viewport))))));
     }

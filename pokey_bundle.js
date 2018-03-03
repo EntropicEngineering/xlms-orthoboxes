@@ -24495,40 +24495,48 @@ navigator.simpleHID = Device;
 /**
  * 'Magic' constant strings collected in one place.
  */
+const session_data_identifier = "session_data";
+const redirect_identifier = "redirect_URL";
+const endpoint_identifier = "endpoint";
 
 /**
  * Created by riggs on 7/31/16.
  *
  * API for plugins.
  */
-const endpoint = new Promise((resolve) => {
-    // poll();
-});
-async function fetch_session_data() {
-    async function retrieve() {
-        try {
-            return await fetch(await endpoint).then(response => response.json());
-        }
-        catch (error) {
-            DEBUG(error);
-            try {
-                return await new Promise(((resolve, reject) => {
-                    user_input(`Error: ${error.message}`, {
-                        Retry: () => resolve(retrieve()),
-                        Exit: reject
-                    });
-                }));
-            }
-            catch (_a) {
-            }
+/**
+ * Takes an object with HID message names as keys and function to call for each message as values.
+ */
+async function initialize_device(session_data, handlers) {
+    let device = await Device.connect(...session_data.hardware);
+    function handle(report) {
+        DEBUG(report);
+        let { id, data } = report;
+        let func = handlers[device.reports.input[id].name];
+        switch (typeof func) {
+            case "function":
+                return func(data);
+            default:
+                ERROR(`No message handler for ${report}.`);
         }
     }
-    let REST_data = await retrieve();
-    DEBUG(REST_data);
-    return REST_data;
+    async function poll() {
+        handle(await device.receive());
+        setTimeout(poll, 0);
+    }
+    poll();
+    // 'configuration' object is an array of objects, with each object having a single key: value pair.
+    // This is to ensure the order is consistent.
+    device.set_feature('config', ...session_data.configuration.map(Number));
+    // Initialize device
+    device.send('timestamp', Date.now());
+}
+function fetch_session_data() {
+    return JSON.parse(sessionStorage.getItem(session_data_identifier));
 }
 async function send_results(results) {
-    let response = await fetch(await endpoint, {
+    const endpoint = sessionStorage.getItem(endpoint_identifier);
+    let response = await fetch(new URL(endpoint).href, {
         method: 'put',
         headers: {
             'Content-type': 'application/json; charset=UTF-8'
@@ -24539,7 +24547,7 @@ async function send_results(results) {
     return response.ok;
 }
 function exit() {
-    // TODO: Forward accordingly
+    location.replace(new URL(sessionStorage.getItem(redirect_identifier)).href);
 }
 if (DEVEL) {
     window.devel.exit = exit;
@@ -29356,10 +29364,10 @@ var __rest = (undefined && undefined.__rest) || function (s, e) {
             t[p[i]] = s[p[i]];
     return t;
 };
-const kurento_client = kurentoClient.KurentoClient;
+// import 'webrtc-adapter';
 if (DEVEL) {
     window.devel.kurento_utils = kurento_utils;
-    window.devel.kurento_client = kurentoClient;
+    window.devel.kurento_client = kurentoClient.kurentoClient;
     window.devel.user_input_state = user_input_state;
 }
 const HID_handlers = {};
@@ -29531,6 +29539,7 @@ HID_handlers.status = action(save_raw_event(async (_a) => {
             await promise;
         }
         catch (_b) {
+            exit();
         }
     }
     if (orthobox.set_up && orthobox.tool_state === TOOL_STATE.In) {
@@ -29580,8 +29589,10 @@ HID_handlers.poke = action(save_raw_event(({ timestamp, location }) => {
     }
 }, 'poke'));
 class Orthobox_Component extends View_Port {
-    componentDidMount() {
-        // initialize_device(this.props.orthobox.session_data, HID_handlers);
+    componentWillMount() {
+        const session_data = fetch_session_data();
+        initialize_device(session_data, HID_handlers);
+        Object.assign(orthobox.session_data, session_data);
     }
 }
 let Status_Bar = class Status_Bar extends react_2 {
@@ -29626,7 +29637,9 @@ let Status_Bar = class Status_Bar extends react_2 {
                             " ",
                             error_count,
                             " ")))
-                : react_3("h2", null, " Loading "),
+                :
+                    react_3("div", { className: "flex-grow" },
+                        react_3("h2", null, " Loading ")),
             react_3(User_Input, { input: user_input_state })));
     }
 };
@@ -29782,7 +29795,6 @@ let Video_Recorder = class Video_Recorder extends react_2 {
 Video_Recorder = __decorate$1([
     observer
 ], Video_Recorder);
-fetch_session_data().then(session_data => Object.assign(orthobox.session_data, session_data));
 
 /**
  * Created by riggs on 8/15/16.
