@@ -11,6 +11,9 @@ import { session_data_identifier, endpoint_identifier, redirect_identifier } fro
  */
 export async function initialize_device(session_data, handlers) {
     let device = await Device.connect(...session_data.hardware);
+    if (DEVEL) {
+        window.devel.device = device;
+    }
     function handle(report) {
         DEBUG(report);
         let { id, data } = report;
@@ -27,13 +30,15 @@ export async function initialize_device(session_data, handlers) {
         setTimeout(poll, 0);
     }
     poll();
-    // 'configuration' object is an array of objects, with each object having a single key: value pair.
-    // This is to ensure the order is consistent.
-    device.set_feature('config', ...session_data.configuration.map(Number));
     // Initialize device
-    device.send('timestamp', Date.now());
+    // device.set_feature('config', session_data.configuration);
+    // FIXME: Hack because firmware is lazy
+    const config = (await device.get_feature('config')).data;
+    Object.assign(config, session_data.configuration);
+    await device.set_feature('config', config);
+    device.send('timestamp', [Date.now()]);
 }
-export function fetch_session_data() {
+export function get_session_data() {
     return JSON.parse(sessionStorage.getItem(session_data_identifier));
 }
 export async function send_results(results) {

@@ -10,9 +10,7 @@ const endpoint_identifier = "endpoint";
  */
 async function fetch_session_data(endpoint) {
     // const endpoint = new URLSearchParams(document.location.search.substring(1)).get(endpoint_identifier) || '';
-    const REST_data = await fetch(new URL(endpoint).href).then(response => response.json());
-    console.log(REST_data);
-    return REST_data;
+    return fetch(new URL(endpoint).href).then(response => response.json());
 }
 function store_session(session_data, redirect, endpoint) {
     sessionStorage.setItem(session_data_identifier, JSON.stringify(session_data));
@@ -32,5 +30,5 @@ async function initialize(endpoint, redirect) {
     location.assign(new URL(REST_data.interface).href);
 }
 
-// export { initialize };
+export { initialize };
 //# sourceMappingURL=XLMS_loader_bundle.js.map

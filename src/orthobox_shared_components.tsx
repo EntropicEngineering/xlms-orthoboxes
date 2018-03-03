@@ -1,7 +1,12 @@
 /**
  */
 
-import { DEBUG, DEVEL, ERROR, noop } from './utils';
+import {
+    DEBUG,
+    DEVEL,
+    ERROR,
+    noop
+} from './utils';
 
 import {
     User_Input,
@@ -16,7 +21,7 @@ import {
     initialize_device,
     send_results,
     message_handlers,
-    fetch_session_data,
+    get_session_data,
 } from './XLMS';
 
 import * as React from 'react';
@@ -74,7 +79,7 @@ export interface Session_Data extends REST_Data {
 
 export class Orthobox {
     timer_interval?: number;
-    @observable session_data: Session_Data;
+    @observable session_data: Session_Data | {} = {};
     @observable set_up: boolean = false;
     @observable state: ORTHOBOX_STATE = ORTHOBOX_STATE.Waiting;
     @observable tool_state?: TOOL_STATE;
@@ -128,13 +133,14 @@ export class Orthobox {
     }
 
     @computed get results() {
-        let maximum = Number(this.session_data.metrics.elapsed_time.maximum);
-        let minimum = Number(this.session_data.metrics.elapsed_time.minimum);
+        const metrics = (this.session_data as Session_Data).metrics;
+        const maximum = Number(metrics.elapsed_time.maximum);
+        const minimum = Number(metrics.elapsed_time.minimum);
         let success: number;
         if (
-            ( this.wall_errors.length > Number(this.session_data.metrics.wall_error_count.maximum) ) ||
-            ( this.session_data.metrics.drop_error_count &&
-              this.drop_errors.length > Number(this.session_data.metrics.drop_error_count.maximum) )
+            ( this.wall_errors.length > Number(metrics.wall_error_count.maximum) ) ||
+            ( metrics.drop_error_count &&
+              this.drop_errors.length > Number(metrics.drop_error_count.maximum) )
         ) {
             success = 0;
         } else {
@@ -253,7 +259,8 @@ HID_handlers.poke = action(save_raw_event(({timestamp, location}) => {
 
 export class Orthobox_Component<P, S> extends View_Port<P & { orthobox: Orthobox }, S> {
     componentWillMount() {
-        const session_data = fetch_session_data();
+        super.componentWillMount();
+        const session_data = get_session_data();
         initialize_device(session_data, HID_handlers);
         Object.assign(orthobox.session_data, session_data);
     }
@@ -280,7 +287,7 @@ export class Status_Bar extends React.Component<{orthobox: Orthobox}, {}> {
         }
         return (
             <div id="user_input_modal">
-                {( orthobox.session_data !== undefined ) ?
+                {( orthobox.session_data.hasOwnProperty('course_name') ) ?
                     <div id="status_bar" className="flex-grow flex-container row">
                         {/*<h2 id="student_name"> {orthobox.session_data.user_display_name} </h2>*/}
                         {/*<div className="flex-item">*/}
@@ -288,11 +295,11 @@ export class Status_Bar extends React.Component<{orthobox: Orthobox}, {}> {
                         {/*</div>*/}
                         <div className="flex-grow flex-container column">
                             <div className="flex-grow">
-                                <h3 id="course_name"> {orthobox.session_data.course_name} </h3>
+                                <h3 id="course_name"> {(orthobox.session_data as Session_Data).course_name} </h3>
                                 {/*<h3 id="course_name"> course_name </h3>*/}
                             </div>
                             <div className="flex-grow">
-                                <h3 id="exercise_name"> {orthobox.session_data.exercise_name} </h3>
+                                <h3 id="exercise_name"> {(orthobox.session_data as Session_Data).exercise_name} </h3>
                                 {/*<h3 id="exercise_name"> exercise_name </h3>*/}
                             </div>
                         </div>
@@ -405,7 +412,7 @@ export class Video_Recorder extends React.Component<{ viewport: Viewport, orthob
             let webRTC_peer = this;  // kurento_utils binds 'this' to the callback, because this function is actually a pile of steaming shit wrapped in an object.
             DEBUG('webRTC_peer:', webRTC_peer);
             webRTC_peer.generateOffer((error: string | undefined, offer: string) => {
-                let session_data = orthobox.session_data;
+                let session_data = orthobox.session_data as Session_Data;
                 if ( error ) {
                     return on_error(error);
                 }

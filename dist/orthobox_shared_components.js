@@ -17,7 +17,7 @@ var __rest = (this && this.__rest) || function (s, e) {
 };
 import { DEBUG, DEVEL, ERROR, noop } from './utils';
 import { User_Input, View_Port, user_input, user_input_state, } from './UI_utils';
-import { exit, initialize_device, send_results, fetch_session_data, } from './XLMS';
+import { exit, initialize_device, send_results, get_session_data, } from './XLMS';
 import * as React from 'react';
 import { findDOMNode } from 'react-dom';
 import { observer } from 'mobx-react';
@@ -53,6 +53,7 @@ function on_error(message) {
 }
 export class Orthobox {
     constructor() {
+        this.session_data = {};
         this.set_up = false;
         this.state = ORTHOBOX_STATE.Waiting;
         this.recording = false;
@@ -99,12 +100,13 @@ export class Orthobox {
         }
     }
     get results() {
-        let maximum = Number(this.session_data.metrics.elapsed_time.maximum);
-        let minimum = Number(this.session_data.metrics.elapsed_time.minimum);
+        const metrics = this.session_data.metrics;
+        const maximum = Number(metrics.elapsed_time.maximum);
+        const minimum = Number(metrics.elapsed_time.minimum);
         let success;
-        if ((this.wall_errors.length > Number(this.session_data.metrics.wall_error_count.maximum)) ||
-            (this.session_data.metrics.drop_error_count &&
-                this.drop_errors.length > Number(this.session_data.metrics.drop_error_count.maximum))) {
+        if ((this.wall_errors.length > Number(metrics.wall_error_count.maximum)) ||
+            (metrics.drop_error_count &&
+                this.drop_errors.length > Number(metrics.drop_error_count.maximum))) {
             success = 0;
         }
         else {
@@ -249,7 +251,8 @@ HID_handlers.poke = action(save_raw_event(({ timestamp, location }) => {
 }, 'poke'));
 export class Orthobox_Component extends View_Port {
     componentWillMount() {
-        const session_data = fetch_session_data();
+        super.componentWillMount();
+        const session_data = get_session_data();
         initialize_device(session_data, HID_handlers);
         Object.assign(orthobox.session_data, session_data);
     }
@@ -273,7 +276,7 @@ let Status_Bar = class Status_Bar extends React.Component {
                 break;
         }
         return (React.createElement("div", { id: "user_input_modal" },
-            (orthobox.session_data !== undefined) ?
+            (orthobox.session_data.hasOwnProperty('course_name')) ?
                 React.createElement("div", { id: "status_bar", className: "flex-grow flex-container row" },
                     React.createElement("div", { className: "flex-grow flex-container column" },
                         React.createElement("div", { className: "flex-grow" },

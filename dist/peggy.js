@@ -12,6 +12,9 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { observer } from "mobx-react";
 import { observable, action } from "mobx";
+// import {
+//     DEBUG
+// } from "./utils";
 let pegs = observable(new Array(6));
 pegs.fill(true);
 function all_left() {
@@ -86,5 +89,5 @@ class Peggy extends Orthobox_Component {
                 React.createElement(Video_Recorder, Object.assign({ viewport: this.state.viewport }, this.props)))));
     }
 }
-render(React.createElement(Peggy, { orthobox: orthobox }), document.getElementById('peggy_app'));
+export const go = () => render(React.createElement(Peggy, { orthobox: orthobox }), document.getElementById('peggy_app'));
 //# sourceMappingURL=peggy.js.map

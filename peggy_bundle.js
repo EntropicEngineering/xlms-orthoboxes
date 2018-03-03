@@ -3103,6 +3103,7 @@ function eq(a, b, aStack, bStack) {
         return false;
     return deepEq(a, b, aStack, bStack);
 }
+var toString = Object.prototype.toString;
 // Internal recursive comparison function for `isEqual`.
 function deepEq(a, b, aStack, bStack) {
     // Unwrap any wrapped objects.
@@ -22632,7 +22633,6 @@ var __decorate = (undefined && undefined.__decorate) || function (decorators, ta
 };
 class View_Port extends react_2 {
     handle_resize() {
-        DEBUG("handle_resize");
         this.setState({ viewport: { window_width: window.innerWidth, window_height: window.innerHeight } });
     }
     componentWillMount() {
@@ -22809,13 +22809,12 @@ const read_bit_shift = (parser, { bits, data_view, byte_offset = 0, little_endia
     return parser({ bits, byte_offset: 0, data_view: new DataView(bytes.buffer), little_endian });
 };
 const uint_pack = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
-    const original_value = value;
-    value = Math.floor(original_value);
-    if (value < 0 || value > 2 ** bits || original_value !== value || value > Number.MAX_SAFE_INTEGER) {
-        throw new Error(`Unable to encode ${original_value} to Uint${bits}`);
+    const numeric = Number(value);
+    if (numeric < 0 || numeric > 2 ** bits || !Number.isSafeInteger(numeric)) {
+        throw new Error(`Unable to encode ${value} to Uint${bits}`);
     }
     if (byte_offset % 1) {
-        return write_bit_shift(uint_pack, value, { bits, data_view, byte_offset, little_endian });
+        return write_bit_shift(uint_pack, numeric, { bits, data_view, byte_offset, little_endian });
     }
     else {
         switch (bits) {
@@ -22827,17 +22826,17 @@ const uint_pack = (value, { bits, data_view, byte_offset = 0, little_endian }) =
             case 6:
             case 7:
             case 8:
-                data_view.setUint8(byte_offset, value);
+                data_view.setUint8(byte_offset, numeric);
                 break;
             case 16:
-                data_view.setUint16(byte_offset, value, little_endian);
+                data_view.setUint16(byte_offset, numeric, little_endian);
                 break;
             case 32:
-                data_view.setUint32(byte_offset, value, little_endian);
+                data_view.setUint32(byte_offset, numeric, little_endian);
                 break;
             case 64:/* Special case to handle millisecond epoc time (from Date.now()) */ 
-                const upper = Math.floor(value / 2 ** 32);
-                const lower = value % 2 ** 32;
+                const upper = Math.floor(numeric / 2 ** 32);
+                const lower = numeric % 2 ** 32;
                 let low_byte;
                 let high_byte;
                 if (little_endian) {
@@ -22897,24 +22896,23 @@ const uint_parse = ({ bits, data_view, byte_offset = 0, little_endian }) => {
     }
 };
 const int_pack = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
-    const original_value = value;
-    value = Math.floor(original_value);
-    if (value < -(2 ** (bits - 1)) || value > 2 ** (bits - 1) - 1 || original_value !== value) {
-        throw new Error(`Unable to encode ${original_value} to Int${bits}`);
+    const numeric = Number(value);
+    if (numeric < -(2 ** (bits - 1)) || numeric > 2 ** (bits - 1) - 1 || !Number.isSafeInteger(numeric)) {
+        throw new Error(`Unable to encode ${value} to Int${bits}`);
     }
     if (byte_offset % 1) {
-        return write_bit_shift(int_pack, value, { bits, data_view, byte_offset, little_endian });
+        return write_bit_shift(int_pack, numeric, { bits, data_view, byte_offset, little_endian });
     }
     else {
         switch (bits) {
             case 8:
-                data_view.setUint8(byte_offset, value);
+                data_view.setUint8(byte_offset, numeric);
                 break;
             case 16:
-                data_view.setUint16(byte_offset, value, little_endian);
+                data_view.setUint16(byte_offset, numeric, little_endian);
                 break;
             case 32:
-                data_view.setUint32(byte_offset, value, little_endian);
+                data_view.setUint32(byte_offset, numeric, little_endian);
                 break;
             default:
                 throw new Error(`Invalid size: ${bits}`);
@@ -22940,17 +22938,21 @@ const int_parse = ({ bits, data_view, byte_offset = 0, little_endian }) => {
     }
 };
 const float_pack = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
-    /* TODO: Input validation */
+    const numeric = Number(value);
+    /* TODO: Input validation; NaN is a valid Float */
+    // if ( !Number.isFinite(numeric) ) {
+    //     throw new Error(`Unable to encode ${value} to Float${bits}`)
+    // }
     if (byte_offset % 1) {
-        return write_bit_shift(float_pack, value, { bits, data_view, byte_offset, little_endian });
+        return write_bit_shift(float_pack, numeric, { bits, data_view, byte_offset, little_endian });
     }
     else {
         switch (bits) {
             case 32:
-                data_view.setFloat32(byte_offset, value, little_endian);
+                data_view.setFloat32(byte_offset, numeric, little_endian);
                 break;
             case 64:
-                data_view.setFloat64(byte_offset, value, little_endian);
+                data_view.setFloat64(byte_offset, numeric, little_endian);
                 break;
             default:
                 throw new Error(`Invalid size: ${bits}`);
@@ -24509,6 +24511,9 @@ const endpoint_identifier = "endpoint";
  */
 async function initialize_device(session_data, handlers) {
     let device = await Device.connect(...session_data.hardware);
+    if (DEVEL) {
+        window.devel.device = device;
+    }
     function handle(report) {
         DEBUG(report);
         let { id, data } = report;
@@ -24525,13 +24530,15 @@ async function initialize_device(session_data, handlers) {
         setTimeout(poll, 0);
     }
     poll();
-    // 'configuration' object is an array of objects, with each object having a single key: value pair.
-    // This is to ensure the order is consistent.
-    device.set_feature('config', ...session_data.configuration.map(Number));
     // Initialize device
-    device.send('timestamp', Date.now());
+    // device.set_feature('config', session_data.configuration);
+    // FIXME: Hack because firmware is lazy
+    const config = (await device.get_feature('config')).data;
+    Object.assign(config, session_data.configuration);
+    await device.set_feature('config', config);
+    device.send('timestamp', [Date.now()]);
 }
-function fetch_session_data() {
+function get_session_data() {
     return JSON.parse(sessionStorage.getItem(session_data_identifier));
 }
 async function send_results(results) {
@@ -29394,6 +29401,7 @@ function on_error(message) {
 }
 class Orthobox {
     constructor() {
+        this.session_data = {};
         this.set_up = false;
         this.state = ORTHOBOX_STATE.Waiting;
         this.recording = false;
@@ -29440,12 +29448,13 @@ class Orthobox {
         }
     }
     get results() {
-        let maximum = Number(this.session_data.metrics.elapsed_time.maximum);
-        let minimum = Number(this.session_data.metrics.elapsed_time.minimum);
+        const metrics = this.session_data.metrics;
+        const maximum = Number(metrics.elapsed_time.maximum);
+        const minimum = Number(metrics.elapsed_time.minimum);
         let success;
-        if ((this.wall_errors.length > Number(this.session_data.metrics.wall_error_count.maximum)) ||
-            (this.session_data.metrics.drop_error_count &&
-                this.drop_errors.length > Number(this.session_data.metrics.drop_error_count.maximum))) {
+        if ((this.wall_errors.length > Number(metrics.wall_error_count.maximum)) ||
+            (metrics.drop_error_count &&
+                this.drop_errors.length > Number(metrics.drop_error_count.maximum))) {
             success = 0;
         }
         else {
@@ -29590,7 +29599,8 @@ HID_handlers.poke = action(save_raw_event(({ timestamp, location }) => {
 }, 'poke'));
 class Orthobox_Component extends View_Port {
     componentWillMount() {
-        const session_data = fetch_session_data();
+        super.componentWillMount();
+        const session_data = get_session_data();
         initialize_device(session_data, HID_handlers);
         Object.assign(orthobox.session_data, session_data);
     }
@@ -29614,7 +29624,7 @@ let Status_Bar = class Status_Bar extends react_2 {
                 break;
         }
         return (react_3("div", { id: "user_input_modal" },
-            (orthobox.session_data !== undefined) ?
+            (orthobox.session_data.hasOwnProperty('course_name')) ?
                 react_3("div", { id: "status_bar", className: "flex-grow flex-container row" },
                     react_3("div", { className: "flex-grow flex-container column" },
                         react_3("div", { className: "flex-grow" },
@@ -29805,6 +29815,9 @@ var __decorate$2 = (undefined && undefined.__decorate) || function (decorators, 
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+// import {
+//     DEBUG
+// } from "./utils";
 let pegs = observable(new Array(6));
 pegs.fill(true);
 function all_left() {
@@ -29879,5 +29892,7 @@ class Peggy extends Orthobox_Component {
                 react_3(Video_Recorder, Object.assign({ viewport: this.state.viewport }, this.props)))));
     }
 }
-reactDom_1(react_3(Peggy, { orthobox: orthobox }), document.getElementById('peggy_app'));
+const go = () => reactDom_1(react_3(Peggy, { orthobox: orthobox }), document.getElementById('peggy_app'));
+
+export { go };
 //# sourceMappingURL=peggy_bundle.js.map

@@ -4,9 +4,7 @@
 import { session_data_identifier, redirect_identifier, endpoint_identifier } from "./constants";
 async function fetch_session_data(endpoint) {
     // const endpoint = new URLSearchParams(document.location.search.substring(1)).get(endpoint_identifier) || '';
-    const REST_data = await fetch(new URL(endpoint).href).then(response => response.json());
-    console.log(REST_data);
-    return REST_data;
+    return fetch(new URL(endpoint).href).then(response => response.json());
 }
 function store_session(session_data, redirect, endpoint) {
     sessionStorage.setItem(session_data_identifier, JSON.stringify(session_data));

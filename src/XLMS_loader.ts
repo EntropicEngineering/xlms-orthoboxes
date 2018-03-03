@@ -10,11 +10,9 @@ import {
 import { REST_Data } from "./XLMS";
 
 
-async function fetch_session_data(endpoint: string) {
+async function fetch_session_data(endpoint: string): Promise<REST_Data> {
     // const endpoint = new URLSearchParams(document.location.search.substring(1)).get(endpoint_identifier) || '';
-    const REST_data: REST_Data = await fetch(new URL(endpoint).href).then(response => response.json());
-    console.log(REST_data);
-    return REST_data;
+    return fetch(new URL(endpoint).href).then(response => response.json());
 }
 
 

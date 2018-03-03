@@ -1,7 +1,6 @@
 /**
  * Created by riggs on 8/14/16.
  */
-'use strict';
 
 // TODO: Set based on ENV
 export const DEVEL: true | false | "test" = true; // Set to something truthy for development, something falsey for deployment, or "test" for test deployment with test app.

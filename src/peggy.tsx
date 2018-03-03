@@ -17,6 +17,9 @@ import { render } from 'react-dom';
 import { observer } from "mobx-react";
 import { observable, action } from "mobx";
 import { Viewport } from "./UI_utils";
+// import {
+//     DEBUG
+// } from "./utils";
 
 
 let pegs = observable(new Array(6));
@@ -118,7 +121,7 @@ class Peggy extends Orthobox_Component<{}, {}> {
     }
 }
 
-
+export const go = () =>
 render(
     <Peggy orthobox={orthobox}/>,
     document.getElementById('peggy_app')

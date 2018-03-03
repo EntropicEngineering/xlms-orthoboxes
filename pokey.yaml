@@ -6,10 +6,14 @@ hardware:
     productId: 2800
 
 configuration:
-  - description:  "Hardware Task Timeout"
+  timeout:
+    description:  "Hardware Task Timeout"
     default:      0
-  - description:  "Error threshold length in ms"
+  error_threshold:
+    description:  "Error threshold length in ms"
     default:      250
+  item_order:
+    description:  "Order of targets, numbered 1-10, for exercise. Set all to 255 for random order."
   - description:  "Target 1"
     default:      0
   - description:  "Target 2"

@@ -5,7 +5,9 @@
 import * as React from 'react';
 import { observer } from 'mobx-react';
 import { observable, computed } from 'mobx';
-import { DEBUG } from "./utils";
+// import {
+//     DEBUG
+// } from "./utils";
 
 export interface Viewport {
     window_width: number,
@@ -14,7 +16,6 @@ export interface Viewport {
 
 export class View_Port<P, S> extends React.Component<P, { viewport: Viewport } & S> {
     handle_resize() {
-        DEBUG("handle_resize");
         this.setState({ viewport: { window_width: window.innerWidth, window_height: window.innerHeight } });
     }
 
