@@ -1,5 +1,5 @@
 --- # Pokey
-interface: index.html
+interface: pokey.html
 
 hardware:
   - vendorId: 1209

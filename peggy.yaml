@@ -1,5 +1,5 @@
 --- # Peggy
-interface: index.html
+interface: peggy.html
 
 hardware:
   - vendorId: 1209

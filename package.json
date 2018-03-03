@@ -8,6 +8,9 @@
     "tsc": "tsc",
     "rollup": "rollup -c",
     "build": "npm run tsc && npm run rollup",
+    "zip_pokey": "zip -r pokey.zip pokey.yaml pokey.html pokey_bundle.js pokey_bundle.js.map style.css kurento-client-bower/js/kurento-client.min.js",
+    "zip_peggy": "zip -r peggy.zip peggy.yaml peggy.html peggy_bundle.js peggy_bundle.js.map style.css kurento-client-bower/js/kurento-client.min.js",
+    "zip": "npm run zip_pokey && npm run zip_peggy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
