@@ -108,7 +108,7 @@ export class Orthobox {
     stop_recording = () => DEBUG('stop_recording but nothing to do.');
 
     async end_exercise() {
-        this.stop_recording();
+        setTimeout(() => this.stop_recording(), 2000);
         this.end_time = Date.now();
         this.state = ORTHOBOX_STATE.Finished;
         if ( this.timer_interval !== undefined ) {
@@ -160,11 +160,11 @@ export let orthobox = new Orthobox();
 if ( DEVEL ) { window.devel.orthobox = orthobox; }
 
 
-export function save_raw_event(wrapped: (...args: any[]) => void, name: string) {
-    return function (...args: any[]) {
-        DEBUG(`orthobox.raw_events.push({${name}: [${args}]});`);
-        orthobox.raw_events.push({ [name]: { ...args } });
-        return wrapped(...args);
+export function save_raw_event(wrapped: (args: any) => void, name: string) {
+    return function (args: any) {
+        // DEBUG(`orthobox.raw_events.push({${name}: [${args}]});`);
+        orthobox.raw_events.push({ [name]: args });
+        return wrapped(args);
     };
 }
 
@@ -287,7 +287,7 @@ export class Status_Bar extends React.Component<{orthobox: Orthobox}, {}> {
         }
         return (
             <div id="user_input_modal">
-                {( orthobox.session_data.hasOwnProperty('course_name') ) ?
+                {( orthobox.session_data !== undefined ) ?
                     <div id="status_bar" className="flex-grow flex-container row">
                         {/*<h2 id="student_name"> {orthobox.session_data.user_display_name} </h2>*/}
                         {/*<div className="flex-item">*/}

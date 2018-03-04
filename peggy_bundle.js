@@ -24513,6 +24513,7 @@ async function initialize_device(session_data, handlers) {
     let device = await Device.connect(...session_data.hardware);
     if (DEVEL) {
         window.devel.device = device;
+        window.devel.handlers = handlers;
     }
     function handle(report) {
         DEBUG(report);
@@ -24530,6 +24531,7 @@ async function initialize_device(session_data, handlers) {
         setTimeout(poll, 0);
     }
     poll();
+    // TODO: Handle hardware disconnect gracefully.
     // Initialize device
     // device.set_feature('config', session_data.configuration);
     // FIXME: Hack because firmware is lazy
@@ -29424,7 +29426,7 @@ class Orthobox {
         return this.wall_errors.length + this.drop_errors.length;
     }
     async end_exercise() {
-        this.stop_recording();
+        setTimeout(() => this.stop_recording(), 2000);
         this.end_time = Date.now();
         this.state = ORTHOBOX_STATE.Finished;
         if (this.timer_interval !== undefined) {
@@ -29515,10 +29517,10 @@ if (DEVEL) {
     window.devel.orthobox = orthobox;
 }
 function save_raw_event(wrapped, name) {
-    return function (...args) {
-        DEBUG(`orthobox.raw_events.push({${name}: [${args}]});`);
-        orthobox.raw_events.push({ [name]: Object.assign({}, args) });
-        return wrapped(...args);
+    return function (args) {
+        // DEBUG(`orthobox.raw_events.push({${name}: [${args}]});`);
+        orthobox.raw_events.push({ [name]: args });
+        return wrapped(args);
     };
 }
 HID_handlers.wall_error = action(save_raw_event(({ timestamp, duration }) => {
@@ -29624,7 +29626,7 @@ let Status_Bar = class Status_Bar extends react_2 {
                 break;
         }
         return (react_3("div", { id: "user_input_modal" },
-            (orthobox.session_data.hasOwnProperty('course_name')) ?
+            (orthobox.session_data !== undefined) ?
                 react_3("div", { id: "status_bar", className: "flex-grow flex-container row" },
                     react_3("div", { className: "flex-grow flex-container column" },
                         react_3("div", { className: "flex-grow" },
@@ -29815,11 +29817,8 @@ var __decorate$2 = (undefined && undefined.__decorate) || function (decorators, 
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-// import {
-//     DEBUG
-// } from "./utils";
 let pegs = observable(new Array(6));
-pegs.fill(true);
+pegs.fill(false);
 function all_left() {
     return pegs.slice(0, 3).every(peg => peg);
 }
@@ -29827,8 +29826,8 @@ function all_right() {
     return pegs.slice(3, 6).every(peg => peg);
 }
 let task = 'ltr';
-HID_handlers.peg = action(save_raw_event(({ timestamp, location, state }) => {
-    pegs[location] = Boolean(state);
+HID_handlers.peg = action(save_raw_event(({ timestamp, location, new_state }) => {
+    pegs[location] = Boolean(new_state);
     switch (orthobox.state) {
         case ORTHOBOX_STATE.Waiting:
         case ORTHOBOX_STATE.Ready:
@@ -29847,12 +29846,11 @@ HID_handlers.peg = action(save_raw_event(({ timestamp, location, state }) => {
 }, "peg"));
 let wrapped_status_func = HID_handlers.status;
 HID_handlers.status = action(({ timestamp, status }) => {
-    // Big-endian
-    let byte2 = status[1];
+    let byte2 = status[2];
     for (let i = 0; i < 6; i++) {
         let mask = 2 ** i;
         // Assign initial peg status.
-        pegs[i] = (byte2 & mask);
+        pegs[i] = Boolean(byte2 & mask);
     }
     // If first 3 pegs are covered.
     if (all_left()) {
@@ -29862,15 +29860,13 @@ HID_handlers.status = action(({ timestamp, status }) => {
 });
 let Peg = class Peg extends react_2 {
     render() {
-        let radius = Math.floor(Math.max(this.props.window_height, this.props.window_width) / 50);
-        let stroke_width = 1;
-        let coordinate = radius + stroke_width;
-        if (!pegs[this.props.id]) {
-            radius = Math.floor(0.9 * radius);
-        }
+        const covered = pegs[this.props.id];
+        const radius = Math.floor(Math.max(this.props.window_height, this.props.window_width) / 50);
+        const stroke_width = 1;
+        const coordinate = radius + stroke_width;
         return (react_3("div", { className: "flex-grow centered" },
             react_3("svg", { height: 2 * coordinate, width: 2 * coordinate, className: "flex-grow centered" },
-                react_3("circle", { cx: coordinate, cy: coordinate, r: radius, fill: pegs[this.props.id] ? "lightgrey" : "#AEBFFF", stroke: "black", strokeWidth: stroke_width }))));
+                react_3("circle", { cx: coordinate, cy: coordinate, r: covered ? radius : Math.floor(0.9 * radius), fill: covered ? "lightgrey" : "#AEBFFF", stroke: "black", strokeWidth: stroke_width }))));
     }
 };
 Peg = __decorate$2([

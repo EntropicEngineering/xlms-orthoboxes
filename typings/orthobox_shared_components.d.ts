@@ -80,7 +80,7 @@ export declare class Orthobox {
     };
 }
 export declare let orthobox: Orthobox;
-export declare function save_raw_event(wrapped: (...args: any[]) => void, name: string): (...args: any[]) => void;
+export declare function save_raw_event(wrapped: (args: any) => void, name: string): (args: any) => void;
 export declare class Orthobox_Component<P, S> extends View_Port<P & {
     orthobox: Orthobox;
 }, S> {

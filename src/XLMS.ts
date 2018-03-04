@@ -41,7 +41,7 @@ export interface message_handlers {[name: string]: (arg: any) => void}
 export async function initialize_device(session_data: REST_Data, handlers: message_handlers) {
 
     let device = await Device.connect(...session_data.hardware);
-    if ( DEVEL ) { window.devel.device = device; }
+    if ( DEVEL ) { window.devel.device = device; window.devel.handlers = handlers }
 
     function handle(report: Report) {
         DEBUG(report);
@@ -61,6 +61,8 @@ export async function initialize_device(session_data: REST_Data, handlers: messa
     }
 
     poll();
+
+    // TODO: Handle hardware disconnect gracefully.
 
     // Initialize device
     // device.set_feature('config', session_data.configuration);

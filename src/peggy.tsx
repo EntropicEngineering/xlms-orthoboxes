@@ -17,13 +17,13 @@ import { render } from 'react-dom';
 import { observer } from "mobx-react";
 import { observable, action } from "mobx";
 import { Viewport } from "./UI_utils";
-// import {
-//     DEBUG
-// } from "./utils";
+import {
+    DEBUG
+} from "./utils";
 
 
 let pegs = observable(new Array(6));
-pegs.fill(true);
+pegs.fill(false);
 
 function all_left() {
     return pegs.slice(0, 3).every(peg => peg)
@@ -35,8 +35,8 @@ function all_right() {
 
 let task = 'ltr';
 
-HID_handlers.peg = action(save_raw_event(({timestamp, location, state}) => {
-    pegs[location] = Boolean(state);
+HID_handlers.peg = action(save_raw_event(({timestamp, location, new_state}) => {
+    pegs[location] = Boolean(new_state);
     switch ( orthobox.state ) {
         case ORTHOBOX_STATE.Waiting:
         case ORTHOBOX_STATE.Ready:
@@ -56,12 +56,11 @@ HID_handlers.peg = action(save_raw_event(({timestamp, location, state}) => {
 
 let wrapped_status_func = HID_handlers.status;
 HID_handlers.status = action(({timestamp, status}) => {
-    // Big-endian
-    let byte2 = status[1];
+    let byte2 = status[2];
     for ( let i = 0; i < 6; i++ ) {
         let mask = 2 ** i;
         // Assign initial peg status.
-        pegs[i] = ( byte2 & mask )
+        pegs[i] = Boolean(byte2 & mask)
     }
     // If first 3 pegs are covered.
     if ( all_left() ) {
@@ -74,15 +73,15 @@ HID_handlers.status = action(({timestamp, status}) => {
 @observer
 class Peg extends React.Component<{ id: number, window_height: number, window_width: number }, {}> {
     render() {
-        let radius = Math.floor(Math.max(this.props.window_height, this.props.window_width) / 50);
-        let stroke_width = 1;
-        let coordinate = radius + stroke_width;
-        if ( !pegs[this.props.id] ) {radius = Math.floor(0.9 * radius)}
+        const covered = pegs[this.props.id];
+        const radius = Math.floor(Math.max(this.props.window_height, this.props.window_width) / 50);
+        const stroke_width = 1;
+        const coordinate = radius + stroke_width;
         return (
             <div className="flex-grow centered">
                 <svg height={2 * coordinate} width={2 * coordinate} className="flex-grow centered">
-                    <circle cx={coordinate} cy={coordinate} r={radius}
-                            fill={pegs[this.props.id] ? "lightgrey" : "#AEBFFF"}
+                    <circle cx={coordinate} cy={coordinate} r={covered ? radius : Math.floor(0.9 * radius)}
+                            fill={covered ? "lightgrey" : "#AEBFFF"}
                             stroke="black" strokeWidth={stroke_width}/>
                 </svg>
             </div>

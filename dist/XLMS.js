@@ -13,6 +13,7 @@ export async function initialize_device(session_data, handlers) {
     let device = await Device.connect(...session_data.hardware);
     if (DEVEL) {
         window.devel.device = device;
+        window.devel.handlers = handlers;
     }
     function handle(report) {
         DEBUG(report);
@@ -30,6 +31,7 @@ export async function initialize_device(session_data, handlers) {
         setTimeout(poll, 0);
     }
     poll();
+    // TODO: Handle hardware disconnect gracefully.
     // Initialize device
     // device.set_feature('config', session_data.configuration);
     // FIXME: Hack because firmware is lazy
