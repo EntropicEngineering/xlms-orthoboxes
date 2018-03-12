@@ -12,6 +12,7 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { observer } from "mobx-react";
 import { observable, action } from "mobx";
+import { User_Input } from "./UI_utils";
 let pegs = observable(new Array(6));
 pegs.fill(false);
 function all_left() {
@@ -41,7 +42,7 @@ HID_handlers.peg = action(save_raw_event(({ timestamp, location, new_state }) =>
 }, "peg"));
 let wrapped_status_func = HID_handlers.status;
 HID_handlers.status = action(({ timestamp, status }) => {
-    let byte2 = status[2];
+    let byte2 = status[2] || status[1];
     for (let i = 0; i < 6; i++) {
         let mask = 2 ** i;
         // Assign initial peg status.
@@ -80,8 +81,9 @@ class Peggy extends Orthobox_Component {
             React.createElement(Status_Bar, Object.assign({}, this.props)),
             React.createElement("div", { className: "flex-container row" },
                 React.createElement(Peggy_Display, Object.assign({ viewport: this.state.viewport }, this.props)),
-                React.createElement(Video_Recorder, Object.assign({ viewport: this.state.viewport }, this.props)))));
+                React.createElement(Video_Recorder, Object.assign({ viewport: this.state.viewport }, this.props))),
+            React.createElement(User_Input, null)));
     }
 }
-export const go = () => render(React.createElement(Peggy, { orthobox: orthobox }), document.getElementById('peggy_app'));
+render(React.createElement(Peggy, { orthobox: orthobox }), document.getElementById('peggy_app'));
 //# sourceMappingURL=peggy.js.map

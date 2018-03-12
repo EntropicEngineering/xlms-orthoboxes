@@ -18,9 +18,12 @@ function store_session(session_data, redirect, endpoint) {
  * @param {string} redirect URL used by plugin to redirect user after exercise.
  * @returns {Promise<void>}
  */
-export async function initialize(endpoint, redirect) {
+async function initialize(endpoint, redirect) {
     const REST_data = await fetch_session_data(endpoint);
     store_session(REST_data, redirect, endpoint);
     location.assign(new URL(REST_data.interface).href);
 }
+const endpoint = new URLSearchParams(document.location.search.substring(1)).get(endpoint_identifier) || '';
+const redirect = document.referrer.replace('/take', '');
+window.onload = () => initialize(endpoint, redirect);
 //# sourceMappingURL=XLMS_loader.js.map

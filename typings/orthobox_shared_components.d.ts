@@ -8,6 +8,7 @@ export declare enum ORTHOBOX_STATE {
     Ready = 1,
     Exercise = 2,
     Finished = 3,
+    Disconnected = 4,
 }
 export declare enum TOOL_STATE {
     Out = 0,
@@ -100,13 +101,21 @@ export declare type Video_Player = HTMLVideoElement;
 export declare class Video_Recorder extends React.Component<{
     viewport: Viewport;
     orthobox: Orthobox;
-}, {}> {
+}, {
+    src: string;
+    devices: Array<MediaDeviceInfo>;
+}> {
     constructor(props: any);
+    constraints: MediaStreamConstraints | false;
     video_player: Video_Player;
     media_streams: Array<MediaStream>;
     set_video_player(video_player: Video_Player): void;
-    add_media_stream(media_stream: MediaStream): void;
+    start_video(): void;
     record(): number | undefined;
+    stop_streams(): void;
+    switch_source(): Promise<void>;
+    componentDidMount(): void;
     componentWillUnmount(): void;
     render(): JSX.Element;
+    connect(): void;
 }

@@ -68,6 +68,7 @@ export async function initialize_device(session_data: REST_Data, handlers: messa
     // device.set_feature('config', session_data.configuration);
     // FIXME: Hack because firmware is lazy
     const config = (await device.get_feature('config')).data;
+    session_data.configuration.item_order = [0, 2, 4, 6, 8, 1, 3, 5, 7, 9];
     Object.assign(config, session_data.configuration);
     await device.set_feature('config', config);
     device.send('timestamp', [Date.now()]);

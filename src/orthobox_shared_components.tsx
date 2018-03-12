@@ -13,7 +13,6 @@ import {
     Viewport,
     View_Port,
     user_input,
-    user_input_state,
 } from './UI_utils';
 import {
     REST_Data,
@@ -32,7 +31,7 @@ import { observable, computed, action, toJS } from 'mobx';
 declare const kurentoClient: any;
 import * as kurento_utils from 'kurento-utils';
 // import 'webrtc-adapter';
-if ( DEVEL ) { window.devel.kurento_utils = kurento_utils; window.devel.kurento_client = kurentoClient.kurentoClient; window.devel.user_input_state = user_input_state; }
+if ( DEVEL ) { window.devel.kurento_utils = kurento_utils; window.devel.kurento_client = kurentoClient.kurentoClient; }
 
 
 export const HID_handlers: message_handlers = {};
@@ -42,7 +41,8 @@ export enum ORTHOBOX_STATE {
     Waiting,
     Ready,
     Exercise,
-    Finished
+    Finished,
+    Disconnected
 }
 
 export enum TOOL_STATE {
@@ -81,7 +81,7 @@ export class Orthobox {
     timer_interval?: number;
     @observable session_data: Session_Data | {} = {};
     @observable set_up: boolean = false;
-    @observable state: ORTHOBOX_STATE = ORTHOBOX_STATE.Waiting;
+    @observable state: ORTHOBOX_STATE = ORTHOBOX_STATE.Disconnected;
     @observable tool_state?: TOOL_STATE;
     @observable recording: boolean = false;
     @observable start_time?: number;
@@ -115,21 +115,31 @@ export class Orthobox {
             clearInterval(this.timer_interval);
         }
         Object.assign(this.session_data, this.results);
-        // send_results(this.session_data);
-        await send_results(this.results);
-        user_input(`You took ${Math.floor(this.results.elapsed_time as number / 1000)} seconds and made ${this.error_count} errors.`, { Exit: exit });
+        // FIXME: Temoprary hack for conference
+        // await send_results(this.results);
+        user_input(`You took ${Math.floor(this.results.elapsed_time as number / 1000)} seconds and made ${this.error_count} errors.`, { Exit:
+            // FIXME: Temoprary hack for conference
+            // exit
+                () => {
+                    this.state = ORTHOBOX_STATE.Disconnected;
+                    this.timer = 0;
+                    this.wall_errors = [];
+                    this.drop_errors = [];
+                }
+        });
     }
 
     start_exercise() {
-        if ( !this.recording ) {
-            user_input('Error: Exercise will not begin unless video is recording.', { OK: noop });
-        } else {
+        // FIXME: Temoprary hack for conference
+        // if ( !this.recording ) {
+        //     user_input('Error: Exercise will not begin unless video is recording.', { OK: noop });
+        // } else {
             this.start_time = Date.now();
             this.state = ORTHOBOX_STATE.Exercise;
             this.timer_interval = window.setInterval(() => {
                 this.timer += 1;
             }, 1000);
-        }
+        // }
     }
 
     @computed get results() {
@@ -183,9 +193,9 @@ HID_handlers.drop_error = action(save_raw_event(({timestamp, duration}) => {
 }, 'drop_error'));
 
 
-HID_handlers.status = action(save_raw_event(async ({timestamp, ...status}) => {
+HID_handlers.status = action(save_raw_event(async ({timestamp, status}) => {
 
-    let byte1 = status[0];
+    let byte1 = status[3] || status[0];
 
     // If tool soldered incorrectly.
     if ( byte1 & 1 ) {  // bit-wise and
@@ -208,15 +218,16 @@ HID_handlers.status = action(save_raw_event(async ({timestamp, ...status}) => {
 
     if ( orthobox.set_up && orthobox.tool_state === TOOL_STATE.In ) {
         orthobox.state = ORTHOBOX_STATE.Ready;
+    } else {
+        orthobox.state = ORTHOBOX_STATE.Waiting;
     }
-
 }, 'status'));
 
 
-HID_handlers.tool = action(save_raw_event(({timestamp, state}) => {
-    orthobox.tool_state = state;
-    switch ( state ) {
-        case 0:   // Out
+HID_handlers.tool = action(save_raw_event(({timestamp, new_state}) => {
+    orthobox.tool_state = new_state;
+    switch ( new_state ) {
+        case TOOL_STATE.Out:
             switch ( orthobox.state ) {
                 case ORTHOBOX_STATE.Ready:
                     if ( orthobox.set_up ) {
@@ -226,7 +237,7 @@ HID_handlers.tool = action(save_raw_event(({timestamp, state}) => {
                     break;
             }
             break;
-        case 1:   // In
+        case TOOL_STATE.In:
             switch ( orthobox.state ) {
                 case ORTHOBOX_STATE.Waiting:
                     if ( orthobox.set_up ) {
@@ -235,7 +246,7 @@ HID_handlers.tool = action(save_raw_event(({timestamp, state}) => {
                     break;
             }
             break;
-        case 2:
+        case TOOL_STATE.Unplugged:
             switch ( orthobox.state ) {
                 case ORTHOBOX_STATE.Ready:
                     orthobox.state = ORTHOBOX_STATE.Waiting;
@@ -284,38 +295,38 @@ export class Status_Bar extends React.Component<{orthobox: Orthobox}, {}> {
             case ORTHOBOX_STATE.Waiting:
                 timer = 'Waiting';
                 break;
+            case ORTHOBOX_STATE.Disconnected:
+                timer = 'Disconnected';
+                break;
         }
-        return (
-            <div id="user_input_modal">
-                {( orthobox.session_data !== undefined ) ?
-                    <div id="status_bar" className="flex-grow flex-container row">
-                        {/*<h2 id="student_name"> {orthobox.session_data.user_display_name} </h2>*/}
-                        {/*<div className="flex-item">*/}
-                        {/*<h2 id="student_name"> user_display_name </h2>*/}
-                        {/*</div>*/}
-                        <div className="flex-grow flex-container column">
-                            <div className="flex-grow">
-                                <h3 id="course_name"> {(orthobox.session_data as Session_Data).course_name} </h3>
-                                {/*<h3 id="course_name"> course_name </h3>*/}
-                            </div>
-                            <div className="flex-grow">
-                                <h3 id="exercise_name"> {(orthobox.session_data as Session_Data).exercise_name} </h3>
-                                {/*<h3 id="exercise_name"> exercise_name </h3>*/}
-                            </div>
-                        </div>
-                        <div className="flex-grow">
-                            <h2 id="timer"> {timer} </h2>
-                        </div>
-                        <div className="flex-grow">
-                            <h3 id="error_count"> {error_count} </h3>
-                        </div>
-                    </div>
-                    :
-                    <div className="flex-grow"><h2> Loading </h2></div>
-                }
-                <User_Input input={user_input_state}/>
-            </div>
-        );
+        if ( orthobox.session_data !== undefined ) {
+           return (
+               <div id="status_bar" className="flex-grow flex-container row">
+                   {/*<h2 id="student_name"> {orthobox.session_data.user_display_name} </h2>*/}
+                   {/*<div className="flex-item">*/}
+                   {/*<h2 id="student_name"> user_display_name </h2>*/}
+                   {/*</div>*/}
+                   <div className="flex-grow flex-container column">
+                       <div className="flex-grow">
+                           <h3 id="course_name"> {( orthobox.session_data as Session_Data ).course} </h3>
+                           {/*<h3 id="course_name"> course_name </h3>*/}
+                       </div>
+                       <div className="flex-grow">
+                           <h3 id="exercise_name"> {( orthobox.session_data as Session_Data ).exercise} </h3>
+                           {/*<h3 id="exercise_name"> exercise_name </h3>*/}
+                       </div>
+                   </div>
+                   <div className="flex-grow">
+                       <h2 id="timer"> {timer} </h2>
+                   </div>
+                   <div className="flex-grow">
+                       <h3 id="error_count"> {error_count} </h3>
+                   </div>
+               </div>
+           )
+        } else {
+            return <div className="flex-grow"><h2> Loading </h2></div>
+        }
     }
 }
 
@@ -327,57 +338,41 @@ export class Status_Bar extends React.Component<{orthobox: Orthobox}, {}> {
 export type Video_Player = HTMLVideoElement;
 
 class Video_Display extends React.Component<{
-    add_media_stream: (media_stream: MediaStream) => void,
     set_video_player: (video_player: Video_Player) => void,
-    viewport: Viewport
-}, { src?: string }> {
-    constructor(props: any) {
-        super(props);
-        this.state = {};
-        this.streams = [];
-    }
-
-    streams: Array<MediaStream>;
+    viewport: Viewport,
+    src: string
+}, {}> {
 
     componentDidMount() {
-        navigator.mediaDevices.getUserMedia({ video: true })
-                 .then(mediaStream => {
-                     this.props.add_media_stream && this.props.add_media_stream(mediaStream);
-                     if ( DEVEL ) { window.devel.video_stream = mediaStream; }
-                     this.streams.push(mediaStream);
-                     this.setState({ src: window.URL.createObjectURL(mediaStream) });
-                 })
-                 .catch(on_error);
         this.props.set_video_player && this.props.set_video_player(findDOMNode(this) as Video_Player);
     }
 
-    componentWillUnmount() {
-        this.streams.forEach(stream => stream.getTracks().forEach(track => track.stop()));
-    }
-
     render() {
-        DEBUG(this.props);
         if ( this.props.viewport.window_width > this.props.viewport.window_height ) {   // Wide
             return (
-                <video src={this.state.src} height={this.props.viewport.window_height * .8} autoPlay/>
+                <video src={this.props.src} height={this.props.viewport.window_height * .8} autoPlay/>
             );
         } else {  // Tall
             return (
-                <video src={this.state.src} width={this.props.viewport.window_width * .8} autoPlay/>
+                <video src={this.props.src} width={this.props.viewport.window_width * .8} autoPlay/>
             );
         }
     }
 }
 
 @observer
-export class Video_Recorder extends React.Component<{ viewport: Viewport, orthobox: Orthobox}, {}> {
+export class Video_Recorder extends React.Component<{ viewport: Viewport, orthobox: Orthobox },
+    { src: string, devices: Array<MediaDeviceInfo> }> {
     constructor(props: any) {
         super(props);
         this.media_streams = [];
+        this.constraints = { video: { facingMode: "environment" } };
+        this.state = { src: '', devices: [] };
         this.set_video_player = this.set_video_player.bind(this);
-        this.add_media_stream = this.add_media_stream.bind(this);
         this.record = this.record.bind(this);
+        this.switch_source = this.switch_source.bind(this);
     }
+    constraints: MediaStreamConstraints | false;
     video_player: Video_Player;
     media_streams: Array<MediaStream>;
 
@@ -385,23 +380,31 @@ export class Video_Recorder extends React.Component<{ viewport: Viewport, orthob
         this.video_player = video_player;
     }
 
-    add_media_stream(media_stream: MediaStream) {
-        DEBUG(`added media_stream: ${media_stream}`);
-        this.media_streams.push(media_stream);
+    start_video() {
+        if ( this.constraints ) {
+            navigator.mediaDevices.getUserMedia(this.constraints)
+                     .then(mediaStream => {
+                         this.media_streams.push(mediaStream);
+                         if ( DEVEL ) { window.devel.video_stream = mediaStream; }
+                         this.setState({ src: window.URL.createObjectURL(mediaStream) });
+                         this.constraints = false;
+                     })
+                     .catch(on_error);
+        }
     }
 
     record() {
         let orthobox = this.props.orthobox;
-        if ( orthobox.state != ORTHOBOX_STATE.Ready ) {
+        if ( orthobox.state !== ORTHOBOX_STATE.Ready ) {
             return user_input('Error: Recording will not begin until device is ready.', { OK: noop });
         }
-        // Nuke the existing media streams so that kurento-client can recreate them because passing them in as an doesn't actually work.
+        // FIXME: Nuke the existing media streams so that kurento-client can recreate them because passing them in as an doesn't actually work.
         this.media_streams.forEach(stream => stream.getTracks().forEach(track => track.stop()));
         DEBUG(`Stopped media_stream: ${this.media_streams}`);
         this.video_player.src = '';
         let options = {
             localVideo: this.video_player,
-            // videoStream: this.video_stream,  // You might think this would work, especially if you read the source, but it doesn't, actually.
+            // videoStream: this.video_stream,  // FIXME: You might think this would work, especially if you read the source, but it doesn't, actually.
             // TODO: Additional options
         };
         DEBUG('options:', options);
@@ -484,17 +487,54 @@ export class Video_Recorder extends React.Component<{ viewport: Viewport, orthob
         return;
     }
 
+    stop_streams() {
+        this.media_streams.forEach(stream => stream.getTracks().forEach(track => track.stop()));
+        this.media_streams = [];
+    }
+
+    async switch_source() {
+        // FIXME: Handle more than 2 sources
+        const get_deviceId = () => {
+            for (const stream of this.media_streams) {
+                for (const video_stream of stream.getVideoTracks()) {
+                   return video_stream.getSettings().deviceId;
+                }
+            }
+            return '';
+        };
+        let deviceId = get_deviceId();
+        const devices = ( await navigator.mediaDevices.enumerateDevices() ).filter(device => device.kind === "videoinput" && device.deviceId !== deviceId);
+        deviceId = devices[0] && devices[0].deviceId;
+        this.constraints = { video: { deviceId } } ;
+        this.stop_streams();
+        this.start_video();
+    }
+
+    componentDidMount() {
+        this.start_video();
+    }
+
     componentWillUnmount() {
         this.props.orthobox.stop_recording();
+        this.stop_streams();
     }
 
     render() {
         return (
-            <div className="column flex-grow">
-                <Video_Display set_video_player={this.set_video_player} add_media_stream={this.add_media_stream}
-                               viewport={this.props.viewport}/>
-                <button id="record" onClick={this.record} hidden={this.props.orthobox.recording}> Record</button>
+            <div className="column flex-container flex-grow centered">
+                <Video_Display set_video_player={this.set_video_player} src={this.state.src!} viewport={this.props.viewport}/>
+                {/* FIXME: Bug in either kurento-utils or kurento-client, probably related to https://github.com/onsip/SIP.js/issues/328#issuecomment-223003736 */}
+                {/*<button id="record" onClick={this.record} hidden={this.props.orthobox.recording}> Record</button>*/}
+                {/* FIXME: Temporary hack for conference */}
+                <div className="flex-grow flex-container row centered">
+                    <button id="record" onClick={this.connect}> Connect </button>
+                    <button id="switch-source" onClick={this.switch_source}> Switch Camera </button>
+                </div>
             </div>
         );
+    }
+
+    connect() { // FIXME: Temporary hack for conference
+        initialize_device(get_session_data(), HID_handlers);
     }
 }

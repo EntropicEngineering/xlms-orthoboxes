@@ -6,18 +6,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0)
-            t[p[i]] = s[p[i]];
-    return t;
-};
 import { DEBUG, DEVEL, ERROR, noop } from './utils';
-import { User_Input, View_Port, user_input, user_input_state, } from './UI_utils';
-import { exit, initialize_device, send_results, get_session_data, } from './XLMS';
+import { View_Port, user_input, } from './UI_utils';
+import { exit, initialize_device, get_session_data, } from './XLMS';
 import * as React from 'react';
 import { findDOMNode } from 'react-dom';
 import { observer } from 'mobx-react';
@@ -27,7 +18,6 @@ import * as kurento_utils from 'kurento-utils';
 if (DEVEL) {
     window.devel.kurento_utils = kurento_utils;
     window.devel.kurento_client = kurentoClient.kurentoClient;
-    window.devel.user_input_state = user_input_state;
 }
 export const HID_handlers = {};
 if (DEVEL) {
@@ -39,6 +29,7 @@ export var ORTHOBOX_STATE;
     ORTHOBOX_STATE[ORTHOBOX_STATE["Ready"] = 1] = "Ready";
     ORTHOBOX_STATE[ORTHOBOX_STATE["Exercise"] = 2] = "Exercise";
     ORTHOBOX_STATE[ORTHOBOX_STATE["Finished"] = 3] = "Finished";
+    ORTHOBOX_STATE[ORTHOBOX_STATE["Disconnected"] = 4] = "Disconnected";
 })(ORTHOBOX_STATE || (ORTHOBOX_STATE = {}));
 export var TOOL_STATE;
 (function (TOOL_STATE) {
@@ -55,7 +46,7 @@ export class Orthobox {
     constructor() {
         this.session_data = {};
         this.set_up = false;
-        this.state = ORTHOBOX_STATE.Waiting;
+        this.state = ORTHOBOX_STATE.Disconnected;
         this.recording = false;
         this.timer = 0;
         this.wall_errors = [];
@@ -83,21 +74,30 @@ export class Orthobox {
             clearInterval(this.timer_interval);
         }
         Object.assign(this.session_data, this.results);
-        // send_results(this.session_data);
-        await send_results(this.results);
-        user_input(`You took ${Math.floor(this.results.elapsed_time / 1000)} seconds and made ${this.error_count} errors.`, { Exit: exit });
+        // FIXME: Temoprary hack for conference
+        // await send_results(this.results);
+        user_input(`You took ${Math.floor(this.results.elapsed_time / 1000)} seconds and made ${this.error_count} errors.`, { Exit: 
+            // FIXME: Temoprary hack for conference
+            // exit
+            () => {
+                this.state = ORTHOBOX_STATE.Disconnected;
+                this.timer = 0;
+                this.wall_errors = [];
+                this.drop_errors = [];
+            }
+        });
     }
     start_exercise() {
-        if (!this.recording) {
-            user_input('Error: Exercise will not begin unless video is recording.', { OK: noop });
-        }
-        else {
-            this.start_time = Date.now();
-            this.state = ORTHOBOX_STATE.Exercise;
-            this.timer_interval = window.setInterval(() => {
-                this.timer += 1;
-            }, 1000);
-        }
+        // FIXME: Temoprary hack for conference
+        // if ( !this.recording ) {
+        //     user_input('Error: Exercise will not begin unless video is recording.', { OK: noop });
+        // } else {
+        this.start_time = Date.now();
+        this.state = ORTHOBOX_STATE.Exercise;
+        this.timer_interval = window.setInterval(() => {
+            this.timer += 1;
+        }, 1000);
+        // }
     }
     get results() {
         const metrics = this.session_data.metrics;
@@ -183,9 +183,8 @@ HID_handlers.drop_error = action(save_raw_event(({ timestamp, duration }) => {
         orthobox.drop_errors.push({ timestamp });
     }
 }, 'drop_error'));
-HID_handlers.status = action(save_raw_event(async (_a) => {
-    var { timestamp } = _a, status = __rest(_a, ["timestamp"]);
-    let byte1 = status[0];
+HID_handlers.status = action(save_raw_event(async ({ timestamp, status }) => {
+    let byte1 = status[3] || status[0];
     // If tool soldered incorrectly.
     if (byte1 & 1) {
         user_input('Device Manufactured Incorrectly', { Quit: exit });
@@ -199,18 +198,21 @@ HID_handlers.status = action(save_raw_event(async (_a) => {
         try {
             await promise;
         }
-        catch (_b) {
+        catch (_a) {
             exit();
         }
     }
     if (orthobox.set_up && orthobox.tool_state === TOOL_STATE.In) {
         orthobox.state = ORTHOBOX_STATE.Ready;
     }
+    else {
+        orthobox.state = ORTHOBOX_STATE.Waiting;
+    }
 }, 'status'));
-HID_handlers.tool = action(save_raw_event(({ timestamp, state }) => {
-    orthobox.tool_state = state;
-    switch (state) {
-        case 0:// Out
+HID_handlers.tool = action(save_raw_event(({ timestamp, new_state }) => {
+    orthobox.tool_state = new_state;
+    switch (new_state) {
+        case TOOL_STATE.Out:
             switch (orthobox.state) {
                 case ORTHOBOX_STATE.Ready:
                     if (orthobox.set_up) {
@@ -220,7 +222,7 @@ HID_handlers.tool = action(save_raw_event(({ timestamp, state }) => {
                     break;
             }
             break;
-        case 1:// In
+        case TOOL_STATE.In:
             switch (orthobox.state) {
                 case ORTHOBOX_STATE.Waiting:
                     if (orthobox.set_up) {
@@ -229,7 +231,7 @@ HID_handlers.tool = action(save_raw_event(({ timestamp, state }) => {
                     break;
             }
             break;
-        case 2:
+        case TOOL_STATE.Unplugged:
             switch (orthobox.state) {
                 case ORTHOBOX_STATE.Ready:
                     orthobox.state = ORTHOBOX_STATE.Waiting;
@@ -274,35 +276,38 @@ let Status_Bar = class Status_Bar extends React.Component {
             case ORTHOBOX_STATE.Waiting:
                 timer = 'Waiting';
                 break;
+            case ORTHOBOX_STATE.Disconnected:
+                timer = 'Disconnected';
+                break;
         }
-        return (React.createElement("div", { id: "user_input_modal" },
-            (orthobox.session_data !== undefined) ?
-                React.createElement("div", { id: "status_bar", className: "flex-grow flex-container row" },
-                    React.createElement("div", { className: "flex-grow flex-container column" },
-                        React.createElement("div", { className: "flex-grow" },
-                            React.createElement("h3", { id: "course_name" },
-                                " ",
-                                orthobox.session_data.course_name,
-                                " ")),
-                        React.createElement("div", { className: "flex-grow" },
-                            React.createElement("h3", { id: "exercise_name" },
-                                " ",
-                                orthobox.session_data.exercise_name,
-                                " "))),
+        if (orthobox.session_data !== undefined) {
+            return (React.createElement("div", { id: "status_bar", className: "flex-grow flex-container row" },
+                React.createElement("div", { className: "flex-grow flex-container column" },
                     React.createElement("div", { className: "flex-grow" },
-                        React.createElement("h2", { id: "timer" },
+                        React.createElement("h3", { id: "course_name" },
                             " ",
-                            timer,
+                            orthobox.session_data.course,
                             " ")),
                     React.createElement("div", { className: "flex-grow" },
-                        React.createElement("h3", { id: "error_count" },
+                        React.createElement("h3", { id: "exercise_name" },
                             " ",
-                            error_count,
-                            " ")))
-                :
-                    React.createElement("div", { className: "flex-grow" },
-                        React.createElement("h2", null, " Loading ")),
-            React.createElement(User_Input, { input: user_input_state })));
+                            orthobox.session_data.exercise,
+                            " "))),
+                React.createElement("div", { className: "flex-grow" },
+                    React.createElement("h2", { id: "timer" },
+                        " ",
+                        timer,
+                        " ")),
+                React.createElement("div", { className: "flex-grow" },
+                    React.createElement("h3", { id: "error_count" },
+                        " ",
+                        error_count,
+                        " "))));
+        }
+        else {
+            return React.createElement("div", { className: "flex-grow" },
+                React.createElement("h2", null, " Loading "));
+        }
     }
 };
 Status_Bar = __decorate([
@@ -310,34 +315,15 @@ Status_Bar = __decorate([
 ], Status_Bar);
 export { Status_Bar };
 class Video_Display extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {};
-        this.streams = [];
-    }
     componentDidMount() {
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(mediaStream => {
-            this.props.add_media_stream && this.props.add_media_stream(mediaStream);
-            if (DEVEL) {
-                window.devel.video_stream = mediaStream;
-            }
-            this.streams.push(mediaStream);
-            this.setState({ src: window.URL.createObjectURL(mediaStream) });
-        })
-            .catch(on_error);
         this.props.set_video_player && this.props.set_video_player(findDOMNode(this));
     }
-    componentWillUnmount() {
-        this.streams.forEach(stream => stream.getTracks().forEach(track => track.stop()));
-    }
     render() {
-        DEBUG(this.props);
         if (this.props.viewport.window_width > this.props.viewport.window_height) {
-            return (React.createElement("video", { src: this.state.src, height: this.props.viewport.window_height * .8, autoPlay: true }));
+            return (React.createElement("video", { src: this.props.src, height: this.props.viewport.window_height * .8, autoPlay: true }));
         }
         else {
-            return (React.createElement("video", { src: this.state.src, width: this.props.viewport.window_width * .8, autoPlay: true }));
+            return (React.createElement("video", { src: this.props.src, width: this.props.viewport.window_width * .8, autoPlay: true }));
         }
     }
 }
@@ -345,23 +331,35 @@ let Video_Recorder = class Video_Recorder extends React.Component {
     constructor(props) {
         super(props);
         this.media_streams = [];
+        this.constraints = { video: { facingMode: "environment" } };
+        this.state = { src: '', devices: [] };
         this.set_video_player = this.set_video_player.bind(this);
-        this.add_media_stream = this.add_media_stream.bind(this);
         this.record = this.record.bind(this);
+        this.switch_source = this.switch_source.bind(this);
     }
     set_video_player(video_player) {
         this.video_player = video_player;
     }
-    add_media_stream(media_stream) {
-        DEBUG(`added media_stream: ${media_stream}`);
-        this.media_streams.push(media_stream);
+    start_video() {
+        if (this.constraints) {
+            navigator.mediaDevices.getUserMedia(this.constraints)
+                .then(mediaStream => {
+                this.media_streams.push(mediaStream);
+                if (DEVEL) {
+                    window.devel.video_stream = mediaStream;
+                }
+                this.setState({ src: window.URL.createObjectURL(mediaStream) });
+                this.constraints = false;
+            })
+                .catch(on_error);
+        }
     }
     record() {
         let orthobox = this.props.orthobox;
-        if (orthobox.state != ORTHOBOX_STATE.Ready) {
+        if (orthobox.state !== ORTHOBOX_STATE.Ready) {
             return user_input('Error: Recording will not begin until device is ready.', { OK: noop });
         }
-        // Nuke the existing media streams so that kurento-client can recreate them because passing them in as an doesn't actually work.
+        // FIXME: Nuke the existing media streams so that kurento-client can recreate them because passing them in as an doesn't actually work.
         this.media_streams.forEach(stream => stream.getTracks().forEach(track => track.stop()));
         DEBUG(`Stopped media_stream: ${this.media_streams}`);
         this.video_player.src = '';
@@ -446,13 +444,43 @@ let Video_Recorder = class Video_Recorder extends React.Component {
         });
         return;
     }
+    stop_streams() {
+        this.media_streams.forEach(stream => stream.getTracks().forEach(track => track.stop()));
+        this.media_streams = [];
+    }
+    async switch_source() {
+        // FIXME: Handle more than 2 sources
+        const get_deviceId = () => {
+            for (const stream of this.media_streams) {
+                for (const video_stream of stream.getVideoTracks()) {
+                    return video_stream.getSettings().deviceId;
+                }
+            }
+            return '';
+        };
+        let deviceId = get_deviceId();
+        const devices = (await navigator.mediaDevices.enumerateDevices()).filter(device => device.kind === "videoinput" && device.deviceId !== deviceId);
+        deviceId = devices[0] && devices[0].deviceId;
+        this.constraints = { video: { deviceId } };
+        this.stop_streams();
+        this.start_video();
+    }
+    componentDidMount() {
+        this.start_video();
+    }
     componentWillUnmount() {
         this.props.orthobox.stop_recording();
+        this.stop_streams();
     }
     render() {
-        return (React.createElement("div", { className: "column flex-grow" },
-            React.createElement(Video_Display, { set_video_player: this.set_video_player, add_media_stream: this.add_media_stream, viewport: this.props.viewport }),
-            React.createElement("button", { id: "record", onClick: this.record, hidden: this.props.orthobox.recording }, " Record")));
+        return (React.createElement("div", { className: "column flex-container flex-grow centered" },
+            React.createElement(Video_Display, { set_video_player: this.set_video_player, src: this.state.src, viewport: this.props.viewport }),
+            React.createElement("div", { className: "flex-grow flex-container row centered" },
+                React.createElement("button", { id: "record", onClick: this.connect }, " Connect "),
+                React.createElement("button", { id: "switch-source", onClick: this.switch_source }, " Switch Camera "))));
+    }
+    connect() {
+        initialize_device(get_session_data(), HID_handlers);
     }
 };
 Video_Recorder = __decorate([

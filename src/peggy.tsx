@@ -16,7 +16,7 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { observer } from "mobx-react";
 import { observable, action } from "mobx";
-import { Viewport } from "./UI_utils";
+import { Viewport, User_Input } from "./UI_utils";
 import {
     DEBUG
 } from "./utils";
@@ -56,7 +56,7 @@ HID_handlers.peg = action(save_raw_event(({timestamp, location, new_state}) => {
 
 let wrapped_status_func = HID_handlers.status;
 HID_handlers.status = action(({timestamp, status}) => {
-    let byte2 = status[2];
+    let byte2 = status[2] || status[1];
     for ( let i = 0; i < 6; i++ ) {
         let mask = 2 ** i;
         // Assign initial peg status.
@@ -115,12 +115,12 @@ class Peggy extends Orthobox_Component<{}, {}> {
                     <Peggy_Display viewport={this.state.viewport} {...this.props}/>
                     <Video_Recorder viewport={this.state.viewport} {...this.props}/>
                 </div>
+                <User_Input/>
             </div>
         );
     }
 }
 
-export const go = () =>
 render(
     <Peggy orthobox={orthobox}/>,
     document.getElementById('peggy_app')

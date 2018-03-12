@@ -8,6 +8,7 @@ import { Status_Bar, Video_Recorder, orthobox, Orthobox_Component } from "./orth
 
 import * as React from 'react';
 import {render} from 'react-dom';
+import { User_Input } from "./UI_utils";
 
 orthobox.set_up = true;
 
@@ -17,6 +18,7 @@ class Pokey extends Orthobox_Component<{}, {}> {
       <div className="flex-container column">
         <Status_Bar {...this.props}/>
         <Video_Recorder viewport={this.state.viewport} {...this.props}/>
+        <User_Input/>
       </div>
     );
   }

@@ -29,6 +29,7 @@ async function initialize(endpoint, redirect) {
     store_session(REST_data, redirect, endpoint);
     location.assign(new URL(REST_data.interface).href);
 }
-
-export { initialize };
+const endpoint = new URLSearchParams(document.location.search.substring(1)).get(endpoint_identifier) || '';
+const redirect = document.referrer.replace('/take', '');
+window.onload = () => initialize(endpoint, redirect);
 //# sourceMappingURL=XLMS_loader_bundle.js.map

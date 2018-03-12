@@ -5,12 +5,14 @@
 import { Status_Bar, Video_Recorder, orthobox, Orthobox_Component } from "./orthobox_shared_components";
 import * as React from 'react';
 import { render } from 'react-dom';
+import { User_Input } from "./UI_utils";
 orthobox.set_up = true;
 class Pokey extends Orthobox_Component {
     render() {
         return (React.createElement("div", { className: "flex-container column" },
             React.createElement(Status_Bar, Object.assign({}, this.props)),
-            React.createElement(Video_Recorder, Object.assign({ viewport: this.state.viewport }, this.props))));
+            React.createElement(Video_Recorder, Object.assign({ viewport: this.state.viewport }, this.props)),
+            React.createElement(User_Input, null)));
     }
 }
 render(React.createElement(Pokey, { orthobox: orthobox }), document.getElementById('pokey_app'));
